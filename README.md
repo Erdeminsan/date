@@ -98,3 +98,6 @@ Resmi referanslar: [Flutter iOS](https://docs.flutter.dev/deployment/ios),
 Tüm temel özellikler ve kabul ölçütleri [V1_SCOPE.md](docs/V1_SCOPE.md) içinde.
 1.0.0 henüz yayınlanmadı. İlk güvenlik düzeltmeleri beğeni limitinin engelleme
 ile aşılmasını ve yasaklı hedeflerin keşfet/eşleşmelerde görünmesini kapatır.
+
+Keşfet ve eşleşmeler artık 20 kayıtlık sayfalarla yüklenir. Eşleşme adları tek
+sorguda gelir; Daha fazla ile devam edilir, Yenile ile ilk sayfaya dönülür.

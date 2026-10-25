@@ -10,8 +10,8 @@
 | --- | --- | --- |
 | Üyelik | Kayıt, doğrulama, giriş/çıkış, sıfırlama, hesap silme; gerçek cihazda soğuk/sıcak başlangıç | Kod var; gerçek e-posta/cihaz kabulü eksik |
 | Profil | 18+ profil, düzenleme, fotoğraf, görünürlük ve keşfet tercihleri | Metin profili var; fotoğraf/tercihler eksik |
-| Keşfet | Tercihlere uygun, engelli/yasaklı hesapları dışlayan, devamı yüklenebilen liste | Temel liste var; tercihler/sayfalama eksik |
-| Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni var; kalan akışlar eksik |
+| Keşfet | Tercihlere uygun, engelli/yasaklı hesapları dışlayan, devamı yüklenebilen liste | 20 kayıtlık sayfalama var; tercihler eksik |
+| Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni ve sayfalama var; ayrılma/otomatik güncelleme eksik |
 | Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Yok; mevcut oyun tek kişilik antrenman |
 | Sonuç ve bilgi açılması | Sunucunun doğruladığı sonuç; aynı sonucu tekrar göndermek güvenli; yalnızca ilgili eşleşmeye erişim | Yok |
 | Mesajlaşma | Yalnızca izinli eşleşmeler; kalıcı mesajlar, sayfalama, otomatik güncelleme, gönderim hatası/tekrar; engel/yasak kontrolü | Yok |
