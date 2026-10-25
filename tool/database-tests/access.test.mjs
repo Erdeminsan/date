@@ -132,22 +132,69 @@ try {
     await db.exec('reset role'); await db.query('delete from app_private.game_invite_events where user_id=$1',[ids.a]);
     await asUser('a');
   });
+  await check('messaging enforces membership, stable retry, cursor pages and durable limits', async () => {
+    await asUser('a'); const match=(await scalar('select id from public.matches')).id;
+    const nonce='10000000-0000-4000-8000-000000000001';
+    const send=async(body,request=nonce)=>(await scalar('select public.send_message($1,$2,$3) as m',[match,request,body])).m;
+    const first=await send('Hello');
+    assert.equal((await send('Hello')).id,first.id);
+    await assert.rejects(()=>send('Changed'),/MESSAGE_CONFLICT/);
+    await assert.rejects(()=>send('   '),/INVALID_MESSAGE/);
+    await assert.rejects(()=>send('a'.repeat(1001)),/INVALID_MESSAGE/);
+    await assert.rejects(()=>db.query("update public.messages set body='forged'"),/permission denied/);
+    await asUser('c');
+    assert.equal((await db.query('select * from public.messages')).rows.length,0);
+    await assert.rejects(()=>send('Spy'),/CHAT_UNAVAILABLE/);
+    await assert.rejects(()=>db.query('select public.messages_page($1)',[match]),/CHAT_UNAVAILABLE/);
+    await asUser('b');
+    assert.equal((await scalar('select public.messages_page($1) as p',[match])).p.messages[0].body,'Hello');
+    await db.exec('reset role');
+    await db.query("insert into public.messages(match_id,sender_id,request_id,body) select $1,$2,gen_random_uuid(),'History '||n from generate_series(1,65) n",[match,ids.a]);
+    await asUser('a');
+    const page=(await scalar('select public.messages_page($1) as p',[match])).p;
+    assert.equal(page.messages.length,50);assert.equal(page.has_more,true);
+    const older=(await scalar('select public.messages_page($1,$2) as p',[match,page.messages.at(-1).id])).p;
+    assert.equal(older.messages.length,16);assert.equal(older.has_more,false);
+    assert.equal(new Set([...page.messages,...older.messages].map(m=>m.id)).size,66);
+    await assert.rejects(()=>db.query('select public.messages_page($1,1,2)',[match]),/INVALID_CURSOR/);
+    await db.exec('reset role');
+    await db.query("insert into public.messages(match_id,sender_id,request_id,body) select $1,$2,gen_random_uuid(),'Catchup '||n from generate_series(1,65) n",[match,ids.b]);
+    await asUser('a');
+    const newer=(await scalar('select public.messages_page($1,null,$2) as p',[match,page.messages[0].id])).p;
+    assert.equal(newer.messages.length,50);assert.equal(newer.has_more,true);
+    const rest=(await scalar('select public.messages_page($1,null,$2) as p',[match,newer.messages.at(-1).id])).p;
+    assert.equal(rest.messages.length,15);assert.equal(rest.has_more,false);
+    await db.exec('reset role');
+    await db.query('insert into app_private.message_events(user_id) select $1 from generate_series(1,59)',[ids.a]);
+    await asUser('a');
+    assert.equal((await send('Hello')).id,first.id);
+    await assert.rejects(()=>send('Too fast','10000000-0000-4000-8000-000000000002'),/MESSAGE_LIMIT/);
+    await db.exec('reset role');
+    await db.query("update auth.users set banned_until=now()+interval '1 hour' where id=$1",[ids.b]);
+    await asUser('a'); await assert.rejects(()=>db.query('select public.messages_page($1)',[match]),/CHAT_UNAVAILABLE/);
+    await assert.rejects(()=>send('Hello'),/CHAT_UNAVAILABLE/);
+    await db.exec('reset role'); await db.query('update auth.users set banned_until=null where id=$1',[ids.b]);
+    await asUser('a');
+  });
   await check('unmatching removes the pair and rooms, preserves quotas and ignores stale IDs', async () => {
     await asUser('a'); const match=(await scalar('select id from public.matches')).id;
     const room=(await scalar("select public.game_room_action($1,'invite') as r",[match])).r.room.id;
     await db.exec('reset role');
     const budget=(await scalar('select count(*)::int as n from app_private.like_events where actor_id=$1',[ids.a])).n;
+    const messageBudget=(await scalar('select count(*)::int as n from app_private.message_events where user_id=$1',[ids.a])).n;
     const invites=(await scalar('select count(*)::int as n from app_private.game_invite_events where user_id=$1',[ids.a])).n;
     await asUser('c'); await db.query('select public.unmatch($1)',[match]);
     await asUser('a'); assert.equal((await db.query('select id from public.matches')).rows.length,1);
     await db.query('select public.unmatch($1)',[match]);
     assert.equal((await db.query('select id from public.matches')).rows.length,0);
     assert.equal((await db.query('select id from public.game_rooms')).rows.length,0);
+    assert.equal((await db.query('select id from public.messages')).rows.length,0);
     assert.equal((await db.query('select * from public.likes')).rows.length,0);
     await assert.rejects(()=>db.query("select public.game_room_action($1,'accept',$2)",[match,room]),/ROOM_UNAVAILABLE/);
     await db.query('select public.unmatch($1)',[match]);
     await db.exec('reset role');
     assert.equal((await scalar('select count(*)::int as n from app_private.like_events where actor_id=$1',[ids.a])).n,budget);
+    assert.equal((await scalar('select count(*)::int as n from app_private.message_events where user_id=$1',[ids.a])).n,messageBudget);
     assert.equal((await scalar('select count(*)::int as n from app_private.game_invite_events where user_id=$1',[ids.a])).n,invites);
     await asUser('a'); assert.equal((await scalar('select public.like_profile($1) as id',[ids.b])).id,null);
     await asUser('b'); const fresh=(await scalar('select public.like_profile($1) as id',[ids.a])).id;
@@ -343,6 +390,8 @@ try {
     await assert.rejects(() => db.exec('select * from public.discover_page()'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.matches_page()'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.game_rooms'), /permission denied/);
+    await assert.rejects(() => db.query('select public.messages_page($1)',[ids.a]), /permission denied/);
+    await assert.rejects(() => db.query("select public.send_message($1,$2,'Hello')",[ids.a,ids.b]), /permission denied/);
     await assert.rejects(() => db.query('select public.unmatch($1)',[ids.a]), /permission denied/);
     await assert.rejects(() => db.query("select public.game_room_action($1,'read')",[ids.a]), /permission denied/);
     await assert.rejects(() => db.query('select public.like_profile($1)',[ids.a]), /permission denied/);
@@ -359,7 +408,7 @@ try {
     assert.equal((await db.query('select * from public.matches')).rows.length,1);
     await db.exec('reset role');
     await db.query('delete from auth.users where id=$1',[ids.b]);
-    for (const table of ['likes','matches','blocks','reports','game_rooms']) {
+    for (const table of ['likes','matches','blocks','reports','game_rooms','messages']) {
       assert.equal((await db.query(`select * from public.${table}`)).rows.length,0);
     }
     assert.equal((await db.query('select * from public.profiles')).rows.length,1);
@@ -370,7 +419,7 @@ try {
   await check('every application table has RLS enabled', async () => {
     await db.exec('reset role');
     const rows=(await db.query("select relname,relrowsecurity from pg_class where relnamespace='public'::regnamespace and relkind='r'")).rows;
-    assert.equal(rows.length,7); assert.ok(rows.every(r=>r.relrowsecurity));
+    assert.equal(rows.length,8); assert.ok(rows.every(r=>r.relrowsecurity));
   });
   console.log(`${passed} database contract checks passed.`);
 } finally { await db.close(); }

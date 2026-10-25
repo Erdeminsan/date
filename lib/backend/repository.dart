@@ -69,6 +69,25 @@ class RoomSnapshot {
   final DateTime serverNow;
 }
 
+String newMessageRequestId() {
+  final random = Random.secure();
+  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+  bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
+  final h = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  return '${h.substring(0,8)}-${h.substring(8,12)}-${h.substring(12,16)}-${h.substring(16,20)}-${h.substring(20)}';
+}
+class ChatMessage {
+  ChatMessage(Map<String,dynamic> data)
+    : id = data['id'] as String, senderId = data['sender_id'] as String,
+      requestId = data['request_id'] as String, body = data['body'] as String;
+  final String id, senderId, requestId, body;
+}
+class MessagePage {
+  const MessagePage(this.messages, this.hasMore);
+  final List<ChatMessage> messages;
+  final bool hasMore;
+}
+
 class Backend {
   Backend(this.client);
   final SupabaseClient client;
@@ -172,6 +191,15 @@ class Backend {
     return RoomSnapshot(Map<String, dynamic>.from(data as Map));
   }
 
+  Future<MessagePage> messages(String matchId, {String? before, String? after}) async {
+    final data = await client.rpc('messages_page', params: {'p_match': matchId, 'p_before': before, 'p_after': after});
+    return MessagePage((data['messages'] as List).map((r) => ChatMessage(Map<String,dynamic>.from(r as Map))).toList(), data['has_more'] as bool);
+  }
+  Future<ChatMessage> sendMessage(String matchId, String requestId, String body) async {
+    final data = await client.rpc('send_message', params: {'p_match': matchId, 'p_request': requestId, 'p_body': body});
+    return ChatMessage(Map<String,dynamic>.from(data as Map));
+  }
+
   Future<void> unmatch(String matchId) async {
     await client.rpc('unmatch', params: {'p_match': matchId});
   }
@@ -260,6 +288,14 @@ String friendlyError(Object error) {
         return 'Doğum tarihi kayıt sonrasında değiştirilemez.';
       case 'PROFILE_UNAVAILABLE':
         return 'Bu profil şu anda erişilebilir değil. Listeyi yenile.';
+      case 'CHAT_UNAVAILABLE':
+        return 'Bu sohbet artık erişilebilir değil. Eşleşmelerini yenile.';
+      case 'MESSAGE_LIMIT':
+        return 'Mesaj gönderme sınırına ulaştın. Bir dakika sonra tekrar dene.';
+      case 'INVALID_MESSAGE':
+        return 'Mesaj 1–1000 karakter olmalı.';
+      case 'MESSAGE_CONFLICT':
+        return 'Bu gönderim farklı içerikle kullanılmış. Sohbeti yeniden aç.';
       case 'ROOM_UNAVAILABLE':
         return 'Bu oyun odasına artık erişilemiyor. Eşleşmelerini yenile.';
       case 'ROOM_ACTION_FORBIDDEN':

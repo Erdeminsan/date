@@ -5,6 +5,7 @@ import 'profile_editor.dart';
 import 'account_settings.dart';
 import 'profile_photo.dart';
 import 'game_lobby.dart';
+import 'chat_screen.dart';
 
 class MemberHome extends StatefulWidget {
   const MemberHome({super.key, required this.backend});
@@ -196,6 +197,8 @@ class _MemberHomeState extends State<MemberHome> {
     onSelected: (v) {
       if (v == 'block') {
         block(id);
+      } else if (v == 'game' && connection != null) {
+        Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => GameLobby(backend: widget.backend, connection: connection)));
       } else if (v == 'unmatch' && connection != null) {
         unmatch(connection);
       } else {
@@ -204,6 +207,7 @@ class _MemberHomeState extends State<MemberHome> {
     },
     itemBuilder:
         (_) => [
+          if (connection != null) const PopupMenuItem(value: 'game', child: Text('Oyun daveti')),
           if (connection != null) const PopupMenuItem(value: 'unmatch', child: Text('Eşleşmeden ayrıl')),
           const PopupMenuItem(value: 'block', child: Text('Engelle')),
           const PopupMenuItem(value: 'report', child: Text('Şikâyet et')),
@@ -325,10 +329,10 @@ class _MemberHomeState extends State<MemberHome> {
                   leading: ProfilePhoto(backend: widget.backend, path: c.photoPath),
                   title: Text(c.name),
                   onTap: acting ? null : () => Navigator.of(context).push<void>(
-                    MaterialPageRoute(builder: (_) => GameLobby(backend: widget.backend, connection: c)),
+                    MaterialPageRoute(builder: (_) => ChatScreen(backend: widget.backend, connection: c)),
                   ),
                   subtitle: const Text(
-                    'Oyun davetini aç',
+                    'Sohbeti aç',
                   ),
                   trailing: menu(c.otherId, connection: c),
                 ),
