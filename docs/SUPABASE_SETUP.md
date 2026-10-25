@@ -1,4 +1,4 @@
-# Supabase 0.2 kurulumu ve kabul testi
+# Supabase 0.3 kurulumu ve kabul testi
 
 ## Durum
 
@@ -109,7 +109,7 @@ npm ci --ignore-scripts
 npm test
 ```
 
-16 veritabanı sözleşme kontrolü yerelde geçti. Auth tabloları ve auth.uid test
+20 veritabanı sözleşme kontrolü yerelde geçti. Auth tabloları ve auth.uid test
 fixtures'larıdır; e-posta, JWT doğrulama, gerçek RLS ortam ayarı ve eşzamanlı
 iki ağ isteği testi değildir. Flutter yeni sürüm testleri henüz çalıştırılamadı;
 Dart format/sözdizimi kontrolü ve git diff --check geçti.
@@ -118,6 +118,51 @@ Dart format/sözdizimi kontrolü ve git diff --check geçti.
 
 Fotoğraf Storage izinleri; iki kişilik oyun odası/başlangıç senkronizasyonu;
 sunucuda skor doğrulama ve bilgi açma; gerçek mesajlaşma; Realtime;
-şifre sıfırlama; hesabı silme ve oturum iptali; engeli kaldırma ekranı;
+şifre sıfırlama; hesap yönetiminin gerçek cihazda kabul testi;
 moderasyon iş akışı; gizlilik/koşullar; app icon ve iOS imzalama.
 Bunlar tamamlanmadan herkese açık dating ürünü olarak yayınlanmamalıdır.
+
+## Hesap yönetimi (0.3)
+
+`20261025125458_account_lifecycle.sql` canlı projede uygulanmıştır.
+`blocked_profiles` yalnızca çağıranın engellediği kişilerin ad/id bilgisini verir.
+`unblock_profile` yalnızca çağıranın engelini kaldırır. Eski beğeni/eşleşme
+oluşturmaz ve karşı tarafın engelini kaldırmaz. Public RPC'ler invoker,
+private fonksiyonlar actor kontrolü ile definer; anonim EXECUTE kapalıdır.
+Canlı yetki sorgusu ve security advisors temizdir.
+
+`delete-account` Edge Function v1 canlıdadır. `verify_jwt=false` yalnızca gateway
+kontrolünü kapatır: fonksiyon gövdesi bearer tokenı `getUser` ile doğrular,
+aynı hesabın şifresini Auth servisine yeniden doğrulatır, global refresh
+session iptali başarılı olduktan sonra yalnızca doğrulanan kullanıcıyı hard-delete
+eder. İstek gövdesindeki hedef id/e-posta kullanılmaz. Service-role anahtarı
+sadece Edge ortamında kalır. Supabase JS sürümü 2.118.0 olarak sabittir.
+
+Tablolardaki cascade ilişkileri profil, detaylar, beğeniler, eşleşmeler,
+engeller ve şikâyet ilişkilerini temizler. Silinen hesaba ait eski access JWT
+süresi dolana kadar kriptografik olarak geçerli olabilir; `actor()` silinen
+Auth kaydını reddeder. Gelecekte Storage veya yeni tablolar eklenirse bu
+silme/erişim tasarımı yeniden gözden geçirilmelidir.
+
+Yerel Node testleri (10 senaryo) sahte Auth bağımlılıklarıyla çalışır:
+
+```bash
+node --test tool/edge-tests/delete-account.test.mjs
+```
+
+Canlı servise oturumsuz istek 401 AUTH_REQUIRED döndürdü. Gerçek hesabı silen
+uçtan uca test yapılmadı; testlerin geçmesi SMTP, gerçek JWT veya SDK ile
+başarılı silme akışının doğrulandığı anlamına gelmez. Flutter diyalog testleri
+eklendi, fakat bu ortamda çalıştırılamadı.
+
+Kabul testi için yalnızca silinmesi amaçlanan bir test hesabı kullanın:
+
+1. Ayarlar'da kendi engel listenizi görün; engeli kaldırın, eski eşleşme dönmemeli.
+2. Diğer hesap da sizi engellediyse profil hâlâ erişilemez olmalı.
+3. Hesap silmede Vazgeç ve hatalı şifre hesabı korumalı.
+4. Doğru şifre ve SİL onayı hesabı silmeli, uygulama giriş ekranına dönmeli.
+5. Eski cihaz oturumu uygulama verisine erişememeli; profil ve ilişkiler silinmeli.
+6. Silme servisi hata verirse başarı mesajı gösterilmemeli. Oturum iptalinden
+   sonra silme başarısız olduysa kullanıcı tekrar giriş yapıp deneyebilir.
+
+Şifre sıfırlama ve mobil doğrulama bağlantısı bu sürümün kapsamına dahil değildir.

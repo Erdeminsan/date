@@ -2,7 +2,7 @@
 
 Flutter + Flame ile oyun üzerinden tanışma uygulaması. Geçici ürün adı PlayMatch.
 
-## 0.2 — Supabase temeli
+## 0.3 — Hesap yönetimi
 
 Gerçek e-posta/şifre oturumu, profil oluşturma/düzenleme, keşfet, karşılıklı
 beğeniyle eşleşme, görünürlük, engelleme ve şikâyet kodu eklendi.
@@ -14,12 +14,16 @@ yetkileri doğrulandı; security advisors uyarı döndürmedi. Yeni Flutter test
 ve iki gerçek hesapla kabul testi henüz çalıştırılmadı. Bu dal geliştirme
 incelemesi içindir; hazır bir üretim veya TestFlight sürümü değildir.
 
+Ayarlar ekranında engellenen kişileri yönetme ve şifre + SİL onayıyla hesabı
+kalıcı silme eklendi. Hesap silme servisi canlıda; gerçek hesapla uçtan uca
+silme testi henüz yapılmadı.
+
 ## Başlatma
 
 ```bash
 git clone https://github.com/Erdeminsan/date.git
 cd date
-git switch feature/supabase-foundation
+git switch feature/account-lifecycle
 bash scripts/setup.sh
 flutter run --dart-define-from-file=config/development.json
 ```
@@ -46,13 +50,14 @@ flutter run --dart-define=DEMO_MODE=true
 
 ## Doğrulama
 
-Dart format/sözdizimi ve `git diff --check` geçti. Yerel veritabanında 16 erişim
-ve iş kuralı kontrolü geçti. Canlı Supabase RLS/yetki ve security advisor kontrolleri geçti.
+Dart format/sözdizimi ve `git diff --check` geçti. Yerel veritabanında 20 erişim
+ve iş kuralı kontrolü ve 10 hesap silme servis testi geçti. Canlı Supabase RLS/yetki ve security advisor kontrolleri geçti.
 Yeni Flutter analiz/widget testleri ve iki hesap kabul testi henüz çalıştırılmadı. Önceki 0.1 demoda 5 test kullanıcı Mac'inde geçmişti.
 
 ```bash
 flutter analyze
 flutter test
+node --test tool/edge-tests/delete-account.test.mjs
 cd tool/database-tests
 npm ci --ignore-scripts
 npm test
@@ -75,7 +80,8 @@ imzalama sırları repoya girmez. Platform projelerini `scripts/setup.sh` üreti
 - [ ] Flutter analiz/test ve lockfile doğrulaması
 - [ ] Fotoğraf, oyun odaları, senkron tur, sunucuda skor doğrulama
 - [ ] Bilgi açma, mesajlaşma, Realtime
-- [ ] Şifre sıfırlama, hesap silme, moderasyon ve gizlilik
+- [x] Engel listesi/kaldırma ve şifre doğrulamalı hesap silme kodu; servis canlıda
+- [ ] Şifre sıfırlama, moderasyon ve gizlilik
 - [ ] Fiziksel iPhone, imzalı arşiv ve TestFlight
 
 Resmi referanslar: [Flutter iOS](https://docs.flutter.dev/deployment/ios),

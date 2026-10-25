@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../backend/repository.dart';
 import '../demo_app.dart' show GameScreen;
 import 'profile_editor.dart';
+import 'account_settings.dart';
 
 class MemberHome extends StatefulWidget {
   const MemberHome({super.key, required this.backend});
@@ -149,6 +150,24 @@ class _MemberHomeState extends State<MemberHome> {
     appBar: AppBar(
       title: const Text('playmatch'),
       actions: [
+        IconButton(
+          tooltip: 'Hesap ayarları',
+          icon: const Icon(Icons.settings_outlined),
+          onPressed:
+              acting
+                  ? null
+                  : () async {
+                    await Navigator.of(context).push<void>(
+                      MaterialPageRoute(
+                        builder:
+                            (_) => AccountSettings(backend: widget.backend),
+                      ),
+                    );
+                    if (mounted &&
+                        widget.backend.client.auth.currentSession != null)
+                      await reload();
+                  },
+        ),
         IconButton(
           tooltip: 'Yenile',
           onPressed: loading || acting ? null : reload,
