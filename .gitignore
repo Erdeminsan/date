@@ -1,0 +1,15 @@
+.dart_tool/
+.packages
+build/
+.flutter-plugins*
+*.iml
+.DS_Store
+.env
+*.p8
+*.p12
+*.mobileprovision
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+android/.gradle/
+android/local.properties
