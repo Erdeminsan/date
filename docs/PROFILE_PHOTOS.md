@@ -52,3 +52,14 @@ Gerçek iPhone galeri izinleri, HEIC/JPEG/PNG seçimi, canlı Storage yükleme/i
 iki cihazda eşzamanlı fotoğraf değiştirme ve dosyalı hesap silme ayrıca denenmeli.
 HEIC her ortamda çözülemez; seçici JPEG'e dönüştürmezse okunabilir hata gösterilir.
 1.0.0 için bu gerçek cihaz kabulü tamamlanmış sayılmamıştır.
+
+## Geliştirme ortamı doğrulaması
+
+Migration `20261025172420` uygulandı; `delete-account` v2 yayında.
+Yetkisiz Edge isteği 401 döndürdü; istemci rolleri silme kilidi RPC'sine
+erişemiyor. Güvenlik danışmanında yalnızca bilerek istemci politikası
+verilmeyen `app_private.like_events` ve `app_private.account_deletions`
+için INFO var. Bu tablolar özel servis işlevleri tarafından yönetilir.
+[Açıklama](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+Android süreç sonlandırılması sonrası galeri seçimini kurtarma henüz yoktur;
+iOS kabulü Android desteğinin doğrulandığı anlamına gelmez.
