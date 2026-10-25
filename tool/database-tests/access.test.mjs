@@ -132,6 +132,34 @@ try {
     await db.exec('reset role'); await db.query('delete from app_private.game_invite_events where user_id=$1',[ids.a]);
     await asUser('a');
   });
+  await check('both participants must be ready; shared schedule is immutable and expires', async () => {
+    await asUser('a'); const match=(await scalar('select id from public.matches')).id;
+    const call=async(action,room=null)=>(await scalar('select public.game_room_action($1,$2,$3) as r',[match,action,room])).r;
+    const room=(await call('invite')).room;
+    await asUser('b'); await call('accept',room.id);
+    const one=await call('ready',room.id);
+    assert.equal(one.my_ready,true);assert.equal(one.room.starts_at,null);assert.equal(one.room.status,'accepted');
+    assert.equal((await call('ready',room.id)).room.starts_at,null);
+    await asUser('c'); await assert.rejects(()=>call('ready',room.id),/ROOM_UNAVAILABLE/);
+    await asUser('a'); const scheduled=(await call('ready',room.id)).room;
+    assert.equal(scheduled.status,'countdown');
+    assert.ok(scheduled.seed>=0 && scheduled.seed<=4294967295);
+    assert.equal(scheduled.engine_version,'sky-hop-v1');
+    assert.equal(new Date(scheduled.ends_at)-new Date(scheduled.starts_at),45000);
+    assert.equal((await call('ready',room.id)).room.starts_at,scheduled.starts_at);
+    assert.equal((await call('invite')).room.seed,scheduled.seed);
+    await assert.rejects(()=>db.query('update public.game_rooms set seed=0 where id=$1',[room.id]),/permission denied/);
+    await db.exec('reset role');
+    await db.query("update public.game_rooms set starts_at=now()-interval '6 seconds',ends_at=now()+interval '39 seconds',expires_at=now()+interval '54 seconds' where id=$1",[room.id]);
+    await asUser('b'); assert.equal((await call('read',room.id)).room.status,'running');
+    await db.exec('reset role');
+    await db.query("update public.game_rooms set starts_at=now()-interval '46 seconds',ends_at=now()-interval '1 second',expires_at=now()+interval '14 seconds' where id=$1",[room.id]);
+    await asUser('a'); assert.equal((await call('read',room.id)).room.status,'awaiting_result');
+    await db.exec('reset role');
+    await db.query("update public.game_rooms set expires_at=now()-interval '1 second' where id=$1",[room.id]);
+    await asUser('b'); assert.equal((await call('ready',room.id)).room.status,'expired');
+    await asUser('a');
+  });
   await check('messaging enforces membership, stable retry, cursor pages and durable limits', async () => {
     await asUser('a'); const match=(await scalar('select id from public.matches')).id;
     const nonce='10000000-0000-4000-8000-000000000001';

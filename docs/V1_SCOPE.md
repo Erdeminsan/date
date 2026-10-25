@@ -12,7 +12,7 @@
 | Profil | 18+ profil, düzenleme, fotoğraf, görünürlük ve keşfet tercihleri | Metin profili ve özel fotoğraf akışı main içinde; gerçek cihaz kabulü ve tercihler eksik |
 | Keşfet | Tercihlere uygun, engelli/yasaklı hesapları dışlayan, devamı yüklenebilen liste | 20 kayıtlık sayfalama var; tercihler eksik |
 | Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni ve sayfalama var; ayrılma geliştirme dalında; otomatik güncelleme eksik |
-| Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Dart/JS motor ve antrenman main içinde; davet/bekleme odası geliştirme dalında, ortak tur yok |
+| Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Davet ve bekleme odası main içinde; hazır olma ve ortak zamanlı tur geliştirme dalında; sunucu sonucu/kopuş kabulü eksik |
 | Sonuç ve bilgi açılması | Sunucunun doğruladığı sonuç; aynı sonucu tekrar göndermek güvenli; yalnızca ilgili eşleşmeye erişim | Offline replay motoru var; canlı sonuç kabulü ve bilgi açılması yok |
 | Mesajlaşma | Yalnızca izinli eşleşmeler; kalıcı mesajlar, sayfalama, otomatik güncelleme, gönderim hatası/tekrar; engel/yasak kontrolü | Metin sohbeti geliştirme dalında; 3 sn polling, güvenli retry ve erişim kontrolleri var; gerçek cihaz kabulü eksik |
 | Güvenlik/moderasyon | Şikâyet inceleme ve yaptırım, denetim kaydı, silme/saklama politikası, kötüye kullanım sınırları | Engelle/şikâyet kaydı var; yönetim akışı eksik |
@@ -102,3 +102,5 @@ bilgi erişimi tabloları da match FK üzerinden silinmeli veya aktif eşleşmey
 kontrol etmelidir. Şu an bu tablolar henüz yoktur.
 
 Kalıcı sohbet paketi: [MESSAGING.md](MESSAGING.md).
+
+Ortak tur başlangıcı: [SHARED_ROUND.md](SHARED_ROUND.md).

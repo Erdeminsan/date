@@ -56,15 +56,21 @@ FeedPage<T> decodeFeedPage<T>(List rows, T Function(Map<String, dynamic>) decode
 class GameRoom {
   GameRoom(Map<String, dynamic> data)
     : id = data['id'] as String, inviterId = data['inviter_id'] as String,
-      status = data['status'] as String, expiresAt = DateTime.parse(data['expires_at'] as String);
+      status = data['status'] as String, expiresAt = DateTime.parse(data['expires_at'] as String),
+      engineVersion = data['engine_version'] as String? ?? 'sky-hop-v1', seed = data['seed'] as int?,
+      startsAt = data['starts_at'] == null ? null : DateTime.parse(data['starts_at'] as String);
+  final String engineVersion;
+  final int? seed;
+  final DateTime? startsAt;
   final String id, inviterId, status;
   final DateTime expiresAt;
-  bool get active => status == 'invited' || status == 'accepted';
+  bool get active => ['invited','accepted','countdown','running','awaiting_result'].contains(status);
 }
 class RoomSnapshot {
   RoomSnapshot(Map<String, dynamic> data)
     : room = data['room'] == null ? null : GameRoom(Map<String, dynamic>.from(data['room'] as Map)),
-      serverNow = DateTime.parse(data['server_now'] as String);
+      serverNow = DateTime.parse(data['server_now'] as String), myReady = data['my_ready'] as bool? ?? false;
+  final bool myReady;
   final GameRoom? room;
   final DateTime serverNow;
 }

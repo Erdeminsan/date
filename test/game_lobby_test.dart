@@ -57,6 +57,21 @@ void main() {
     expect(find.text('Daveti iptal et'), findsNothing);
     await close(tester);
   });
+  testWidgets('ready targets the accepted room and cannot be submitted again', (tester) async {
+    var calls = 0;
+    await open(tester, RoomBackend((action, room) async {
+      if (action == 'ready') {
+        calls++; expect(room, 'room');
+        return RoomSnapshot({'server_now':'2026-10-25T00:00:00Z','my_ready':true,
+          'room':{'id':'room','inviter_id':'other','status':'accepted','expires_at':'2026-10-25T00:02:00Z'}});
+      }
+      return state('accepted');
+    }));
+    await tester.tap(find.text('Hazırım')); await tester.pumpAndSettle();
+    expect(calls,1);
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton,'Hazırsın · Karşı taraf bekleniyor')).onPressed,isNull);
+    await close(tester);
+  });
   testWidgets('background stops polling; resume refreshes; dispose cancels timer', (tester) async {
     var calls = 0;
     await open(tester, RoomBackend((action, room) async { calls++; return state(null); }));
