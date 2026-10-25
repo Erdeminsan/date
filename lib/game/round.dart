@@ -57,10 +57,12 @@ class Round {
     y += velocity * dt;
     bool collision = y - radius <= 0 || y + radius >= 1;
     for (final gate in gates) {
-      final overlaps = birdX + radius > gate.x &&
-          birdX - radius < gate.x + gateWidth;
-      if (overlaps && (y - radius < gate.center - halfGap ||
-          y + radius > gate.center + halfGap)) collision = true;
+      final overlaps =
+          birdX + radius > gate.x && birdX - radius < gate.x + gateWidth;
+      if (overlaps &&
+          (y - radius < gate.center - halfGap ||
+              y + radius > gate.center + halfGap))
+        collision = true;
     }
     if (collision) {
       hits++;

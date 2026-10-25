@@ -13,3 +13,7 @@ ios/.symlinks/
 ios/Flutter/ephemeral/
 android/.gradle/
 android/local.properties
+.env.*
+config/local.json
+supabase/.temp/
+node_modules/

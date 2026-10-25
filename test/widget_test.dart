@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:playmatch/main.dart';
+import 'package:playmatch/demo_app.dart';
 
 void main() {
   testWidgets('Demo başlangıcı ve eşleşme akışı', (tester) async {
@@ -17,8 +17,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(checkbox);
     await tester.pumpAndSettle();
-    expect(tester.widget<Checkbox>(checkbox).value, isTrue,
-        reason: '18+ onayı seçilmiş olmalı.');
+    expect(
+      tester.widget<Checkbox>(checkbox).value,
+      isTrue,
+      reason: '18+ onayı seçilmiş olmalı.',
+    );
     final startButton = find.widgetWithText(FilledButton, 'Demoyu keşfet');
     await tester.ensureVisible(startButton);
     await tester.pumpAndSettle();
@@ -26,8 +29,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(NavigationBar), findsOneWidget);
     final likeButton = find.widgetWithText(FilledButton, '♡ Beğen');
-    await tester.scrollUntilVisible(likeButton, 150,
-        scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(
+      likeButton,
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(likeButton);
     await tester.pumpAndSettle();
