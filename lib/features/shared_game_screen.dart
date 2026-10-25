@@ -6,6 +6,7 @@ import '../game/engine.dart';
 import '../game/flight_game.dart';
 import '../game/shared_round.dart';
 import '../game/input_sender.dart';
+import 'game_result_screen.dart';
 
 class SharedGameScreen extends StatefulWidget {
   const SharedGameScreen({super.key, required this.backend, required this.connection,
@@ -55,12 +56,19 @@ class _SharedGameScreenState extends State<SharedGameScreen> with WidgetsBinding
     await sender.pump(completedTick: round.round.engine.tick, inputs: round.round.inputs,
       elapsedMs: round.estimatedNow.difference(widget.snapshot.room!.startsAt!).inMilliseconds);
     if (!mounted || stopped) return;
-    if (sender.cancelled) {
+    if (sender.cancelled && round.round.finished) {
+      openResult();
+    } else if (sender.cancelled) {
       await stop('Oyun girdileri zamanında iletilemedi. Tur iptal edildi.');
     } else if (sender.complete) {
-      inputTimer?.cancel(); timer?.cancel();
-      setState(() { stopped = true; notice = 'Tur bitti. Yerel skorun: ${round.round.score}. Girdiler kaydedildi. Sunucu sonucu ve bilgi açılması henüz bağlı değil.'; });
+      openResult();
     }
+  }
+  void openResult() {
+    if (!mounted || stopped) return;
+    inputTimer?.cancel(); timer?.cancel(); game.pauseEngine();
+    setState(() { stopped = true; notice = 'Tur tamamlandı. Sonucunu kontrol edebilirsin.'; });
+    Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => GameResultScreen(backend: widget.backend, roomId: widget.snapshot.room!.id)));
   }
   Future<void> check() async {
     if (stopped || checking) return;
@@ -69,11 +77,12 @@ class _SharedGameScreenState extends State<SharedGameScreen> with WidgetsBinding
       if (round.aborted || widget.backend.userId != owner) throw StateError('Round unavailable');
       final result = await widget.backend.gameRoom(widget.connection.id, roomId: widget.snapshot.room!.id).timeout(const Duration(seconds: 4));
       if (!mounted || stopped) return;
+      if (result.room?.status == 'completed' && round.round.finished) { openResult(); return; }
       if (result.room == null || !['countdown','running','awaiting_result'].contains(result.room!.status)) {
         await stop('Tur kapandı veya iptal edildi.');
       }
     } catch (_) {
-      await stop('Bağlantı doğrulanamadı. Tur iptal edildi; bilgi açılmadı.');
+      await stop(round.round.finished ? 'Bağlantı doğrulanamadı. Sonucu odadan kontrol edebilirsin.' : 'Bağlantı doğrulanamadı. Tur iptal edildi; bilgi açılmadı.');
     } finally { checking = false; }
   }
   Future<void> stop(String text) async {
@@ -104,6 +113,7 @@ class _SharedGameScreenState extends State<SharedGameScreen> with WidgetsBinding
         Expanded(child: GestureDetector(onTapDown: stopped ? null : (_) => game.flap(),
           behavior: HitTestBehavior.opaque, child: ClipRect(child: GameWidget(game: game)))),
         if (notice != null) Padding(padding: const EdgeInsets.all(16), child: Text(notice!)),
+        if (stopped && round.round.finished) TextButton(onPressed: () => Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => GameResultScreen(backend: widget.backend, roomId: widget.snapshot.room!.id))), child: const Text('Sonucu gör')),
         if (stopped) FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Odaya dön'))
         else TextButton(onPressed: () => stop('Tur iptal edildi. Bilgi açılmadı.'), child: const Text('Turdan ayrıl')),
       ])),

@@ -94,7 +94,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
         ),
         const SizedBox(height: 12),
         const Text(
-          'Adın keşfette görünür. Doğum tarihin, şehrin ve ilgi alanların bu sürümde yalnızca sana açıktır.',
+          'Adın keşfette görünür. Eşleştiğin kişi sana karşı ilk doğrulanmış galibiyetinde şehrini, ikinci galibiyetinde ilgi alanlarını görebilir. Doğum tarihin ve e-postan oyunla paylaşılmaz.',
         ),
         const SizedBox(height: 24),
         TextFormField(

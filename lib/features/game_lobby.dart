@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../backend/repository.dart';
 import '../game/engine.dart';
 import 'shared_game_screen.dart';
+import 'game_result_screen.dart';
 
 class GameLobby extends StatefulWidget {
   const GameLobby({super.key, required this.backend, required this.connection});
@@ -78,14 +79,14 @@ class _GameLobbyState extends State<GameLobby> with WidgetsBindingObserver {
     final incoming = room != null && room.inviterId != widget.backend.userId;
     final labels = {'invited': incoming ? 'Oyun daveti aldın' : 'Davet gönderildi',
       'accepted': 'Davet kabul edildi', 'countdown': 'Ortak geri sayım',
-      'running': 'Tur sürüyor', 'awaiting_result': 'Tur bitti · Sonuç doğrulaması henüz bağlı değil', 'declined': 'Davet reddedildi',
+      'running': 'Tur sürüyor', 'awaiting_result': 'Tur sonucu bekleniyor', 'completed': 'Tur tamamlandı', 'declined': 'Davet reddedildi',
       'cancelled': 'Davet iptal edildi', 'expired': 'Davetin süresi doldu'};
     return Scaffold(
       appBar: AppBar(title: Text('${widget.connection.name} · Sky Hop')),
       body: ListView(padding: const EdgeInsets.all(24), children: [
         const Text('Oyun daveti', style: TextStyle(fontSize: 28)),
         const SizedBox(height: 16),
-        const Text('İkiniz de hazır olduğunuzda 5 saniyelik geri sayımla aynı engellerde oynarsınız. Sonuç doğrulaması henüz bağlı değil; bu tur profil bilgisi açmaz.'),
+        const Text('İkiniz de hazır olduğunuzda 5 saniyelik geri sayımla aynı engellerde oynarsınız. Doğrulanmış galibiyetlerinle rakibinin önce şehri, sonra ilgi alanları açılır. Rakibin kazandığında senin bilgilerin de aynı kuralla ona açılır. Beraberlikte yeni bilgi açılmaz.'),
         const SizedBox(height: 24),
         if (busy) const LinearProgressIndicator(),
         if (error != null) ...[
@@ -93,6 +94,8 @@ class _GameLobbyState extends State<GameLobby> with WidgetsBindingObserver {
           FilledButton(onPressed: busy ? null : () => refresh(), child: const Text('Tekrar dene')),
         ] else if (snapshot != null) ...[
           Text(room == null ? 'Aktif davet yok' : labels[room.status] ?? 'Oda güncelleniyor'),
+          if (room != null && ['awaiting_result','completed'].contains(room.status))
+            FilledButton(onPressed: busy ? null : () => Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => GameResultScreen(backend: widget.backend, roomId: room.id))), child: const Text('Sonucu gör')),
           if (room?.status == 'accepted') ...[
             const Text('İki oyuncu da hazır olmalı. Bekleme odası 2 dakika sonra kapanır.'),
             FilledButton(onPressed: busy || snapshot!.myReady ? null : () => refresh('ready'),

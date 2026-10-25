@@ -13,7 +13,7 @@
 | Keşfet | Tercihlere uygun, engelli/yasaklı hesapları dışlayan, devamı yüklenebilen liste | 20 kayıtlık sayfalama var; tercihler eksik |
 | Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni ve sayfalama var; ayrılma main içinde; otomatik güncelleme eksik |
 | Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Davet ve bekleme odası main içinde; hazır olma ve ortak zamanlı tur main içinde; sunucu sonucu/kopuş kabulü eksik |
-| Sonuç ve bilgi açılması | Sunucunun doğruladığı sonuç; aynı sonucu tekrar göndermek güvenli; yalnızca ilgili eşleşmeye erişim | Offline replay motoru var; canlı sonuç kabulü ve bilgi açılması yok |
+| Sonuç ve bilgi açılması | Sunucunun doğruladığı sonuç; aynı sonucu tekrar göndermek güvenli; yalnızca ilgili eşleşmeye erişim | Replay, canlı sonuç servisi ve kazanana özel erişim geliştirme paketinde; cihaz kabulü eksik |
 | Mesajlaşma | Yalnızca izinli eşleşmeler; kalıcı mesajlar, sayfalama, otomatik güncelleme, gönderim hatası/tekrar; engel/yasak kontrolü | Metin sohbeti main içinde; 3 sn polling, güvenli retry ve erişim kontrolleri var; gerçek cihaz kabulü eksik |
 | Güvenlik/moderasyon | Şikâyet inceleme ve yaptırım, denetim kaydı, silme/saklama politikası, kötüye kullanım sınırları | Engelle/şikâyet kaydı var; yönetim akışı eksik |
 | Kullanıcı bilgilendirmesi | Gerçek destek ve gizlilik bağlantıları, kullanım koşulları, veri kullanımı ve hesap silme açıklaması | İşletmeci bilgileri/metinler eksik |
@@ -113,3 +113,5 @@ başarılı. Yukarıdaki PR #8 değerlendirmesi tarihsel kayıttır.
 Sıradaki iş canlı girdi kaydı ve sonuç/ödül işlemidir. Doğrulama çekirdeği
 [ROUND_VERIFICATION.md](ROUND_VERIFICATION.md) içinde tanımlanmıştır;
 çekirdek testi canlı yetkilendirme veya ödül işleminin tamamlandığı anlamına gelmez.
+
+Doğrulanmış sonuç ve erişim paketi: [ROUND_RESULTS.md](ROUND_RESULTS.md).
