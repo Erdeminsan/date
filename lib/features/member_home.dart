@@ -5,6 +5,7 @@ import 'profile_editor.dart';
 import 'account_settings.dart';
 import 'profile_photo.dart';
 import 'game_lobby.dart';
+import 'match_details_screen.dart';
 import 'chat_screen.dart';
 
 class MemberHome extends StatefulWidget {
@@ -197,6 +198,8 @@ class _MemberHomeState extends State<MemberHome> {
     onSelected: (v) {
       if (v == 'block') {
         block(id);
+      } else if (v == 'details' && connection != null) {
+        Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => MatchDetailsScreen(backend: widget.backend, connection: connection)));
       } else if (v == 'game' && connection != null) {
         Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => GameLobby(backend: widget.backend, connection: connection)));
       } else if (v == 'unmatch' && connection != null) {
@@ -207,6 +210,7 @@ class _MemberHomeState extends State<MemberHome> {
     },
     itemBuilder:
         (_) => [
+          if (connection != null) const PopupMenuItem(value: 'details', child: Text('Açılan bilgiler')),
           if (connection != null) const PopupMenuItem(value: 'game', child: Text('Oyun daveti')),
           if (connection != null) const PopupMenuItem(value: 'unmatch', child: Text('Eşleşmeden ayrıl')),
           const PopupMenuItem(value: 'block', child: Text('Engelle')),

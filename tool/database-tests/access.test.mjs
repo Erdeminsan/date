@@ -280,6 +280,25 @@ try {
     await db.exec('reset role');
     assert.equal((await scalar('select count(*)::int as n from app_private.game_results where match_id=$1',[match])).n,4);
   });
+  await check('match unlocks survive a new invitation, follow current profile, and reject outsiders/bans', async () => {
+    await asUser('a'); const match=(await scalar('select id from public.matches')).id;
+    const read=async()=>(await scalar('select public.match_unlocks($1) as r',[match])).r;
+    const previous=await read(); assert.equal(previous.unlock_level,2);
+    const room=(await scalar("select public.game_room_action($1,'invite') as r",[match])).r.room.id;
+    assert.deepEqual(await read(),previous);
+    assert.deepEqual(Object.keys(previous).sort(),['city','interests','unlock_level']);
+    await asUser('b'); const b=await read(); assert.equal(b.unlock_level,1);assert.equal(b.interests,null);
+    await asUser('c');await assert.rejects(()=>read(),/MATCH_UNAVAILABLE/);
+    await db.exec('reset role');
+    await db.query("update public.profile_details set city='New city' where user_id=$1",[ids.b]);
+    await asUser('a');assert.equal((await read()).city,'New city');
+    await db.exec('reset role');
+    await db.query("update public.profile_details set city='Private city' where user_id=$1",[ids.b]);
+    await db.query("update auth.users set banned_until=now()+interval '1 hour' where id=$1",[ids.b]);
+    await asUser('a');await assert.rejects(()=>read(),/MATCH_UNAVAILABLE/);
+    await db.exec('reset role');await db.query('update auth.users set banned_until=null where id=$1',[ids.b]);
+    await asUser('a');await db.query("select public.game_room_action($1,'cancel',$2)",[match,room]);
+  });
   await check('cancellation between verification and finalization grants nothing', async () => {
     await db.exec('reset role'); const match=(await scalar('select id from public.matches')).id;
     const r=await scalar(`insert into public.game_rooms(match_id,inviter_id,status,ready_low,ready_high,seed,starts_at,ends_at,expires_at)
@@ -350,6 +369,7 @@ try {
     await asUser('a'); assert.equal((await db.query('select id from public.matches')).rows.length,1);
     await db.query('select public.unmatch($1)',[match]);
     assert.equal((await db.query('select id from public.matches')).rows.length,0);
+    await assert.rejects(()=>db.query('select public.match_unlocks($1)',[match]),/MATCH_UNAVAILABLE/);
     assert.equal((await db.query('select id from public.game_rooms')).rows.length,0);
     assert.equal((await db.query('select id from public.messages')).rows.length,0);
     assert.equal((await db.query('select * from public.likes')).rows.length,0);
@@ -362,6 +382,7 @@ try {
     await asUser('a'); assert.equal((await scalar('select public.like_profile($1) as id',[ids.b])).id,null);
     await asUser('b'); const fresh=(await scalar('select public.like_profile($1) as id',[ids.a])).id;
     assert.notEqual(fresh,match);
+    assert.deepEqual((await scalar('select public.match_unlocks($1) as r',[fresh])).r,{unlock_level:0,city:null,interests:null});
     await asUser('a'); await db.query('select public.unmatch($1)',[match]);
     assert.equal((await scalar('select id from public.matches')).id,fresh);
     assert.equal((await db.query('select * from public.likes')).rows.length,1);
@@ -550,6 +571,7 @@ try {
   await check('anonymous role has neither data nor RPC access', async () => {
     await db.exec('reset role; set role anon');
     await assert.rejects(() => db.exec('select * from public.profiles'), /permission denied/);
+    await assert.rejects(() => db.query('select public.match_unlocks($1)',[ids.a]), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.discover_page()'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.matches_page()'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.game_rooms'), /permission denied/);
