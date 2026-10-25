@@ -5,6 +5,9 @@ import 'backend/repository.dart';
 import 'demo_app.dart' show PlayMatchApp;
 import 'features/auth_panel.dart';
 import 'features/member_home.dart';
+import 'features/password_recovery.dart';
+
+const authCallback = 'com.erdeminsan.playmatch://auth-callback';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -86,6 +89,7 @@ class SessionGate extends StatefulWidget {
 
 class _SessionGateState extends State<SessionGate> {
   late final Stream<AuthState> authChanges;
+  bool recovering = false;
   @override
   void initState() {
     super.initState();
@@ -96,7 +100,20 @@ class _SessionGateState extends State<SessionGate> {
   Widget build(BuildContext context) => StreamBuilder<AuthState>(
     stream: authChanges,
     builder: (context, snapshot) {
+      final event = snapshot.data?.event;
+      if (event == AuthChangeEvent.passwordRecovery) recovering = true;
+      if (event == AuthChangeEvent.signedOut) recovering = false;
       final session = widget.client.auth.currentSession;
+      if (recovering && session != null) {
+        return PasswordRecovery(
+          save: (password) async {
+            await widget.client.auth.updateUser(
+              UserAttributes(password: password),
+            );
+          },
+          finish: () => widget.client.auth.signOut(scope: SignOutScope.global),
+        );
+      }
       if (session != null)
         return MemberHome(
           key: ValueKey(session.user.id),
@@ -108,6 +125,7 @@ class _SessionGateState extends State<SessionGate> {
             final result = await widget.client.auth.signUp(
               email: email,
               password: password,
+              emailRedirectTo: authCallback,
             );
             return result.session == null
                 ? 'E-postandaki doğrulama bağlantısını aç; sonra bu ekrandan giriş yap.'
@@ -119,8 +137,17 @@ class _SessionGateState extends State<SessionGate> {
           );
           return null;
         },
+        resetPassword:
+            (email) => widget.client.auth.resetPasswordForEmail(
+              email,
+              redirectTo: authCallback,
+            ),
         resend: (email) async {
-          await widget.client.auth.resend(type: OtpType.signup, email: email);
+          await widget.client.auth.resend(
+            type: OtpType.signup,
+            email: email,
+            emailRedirectTo: authCallback,
+          );
         },
       );
     },

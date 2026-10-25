@@ -17,3 +17,5 @@ android/local.properties
 config/local.json
 supabase/.temp/
 node_modules/
+__pycache__/
+*.pyc

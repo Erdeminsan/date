@@ -27,8 +27,9 @@ henüz yapılmadı. Yerel auth fixtures gerçek Supabase Auth yerine geçmez.
   olarak yapılandırın. Varsayılan localhost yönlendirmesi mobil kullanıcı için
   hazır bir dönüş akışı değildir.
 - Bu sürüm e-posta bağlantısı açıldıktan sonra uygulamaya dönüp e-posta/şifreyle
-  giriş yapmayı destekler. Otomatik uygulamaya dönüş/deep link ve şifre sıfırlama
-  henüz yoktur. Güvenlik kontrolünü aşmak için Confirm email kapatılmamalıdır.
+  giriş yapmayı destekler. Native dönüş ve şifre sıfırlama kodu eklendi;
+  TESTFLIGHT.md içindeki redirect ve cihaz kabul adımları tamamlanmalıdır.
+  Güvenlik kontrolünü aşmak için Confirm email kapatılmamalıdır.
 - Kayıt sonucunda hesap zaten varsa Supabase e-posta gizliliği için aynı yanıtı
   döndürebilir; kullanıcıya kesin hesap oluşturuldu iddiası gösterilmez.
 
@@ -47,10 +48,9 @@ barındırır. Bu anahtar gizli değildir; veri güvenliğini RLS ve RPC yetkile
 veya repoya eklenmez. Kişisel ortam değişiklikleri için ignore edilen
 `config/local.json` kullanın.
 
-Bağımlılık `supabase_flutter: 2.12.0` olarak sabitlendi. Bu çalışma ortamında
-Flutter bağımlılık kurulumu güvenlik incelemesinde durduğundan `pubspec.lock`
-üretilmedi. İlk başarılı `flutter pub get` sonrasında bu dosyayı PR'a ekleyin;
-bunu yapmadan tekrarlanabilir release build kabulü vermeyin.
+Bağımlılık `supabase_flutter: 2.12.0` olarak sabitlendi. Flutter 3.38.0 ile
+CI'da bağımlılıklar çözüldü ve `pubspec.lock` repoya eklendi. İlk CI çalışmasında
+analiz, Flutter testleri ve imzasız iOS release derlemesi geçti.
 
 Mevcut demo bağımsız çalıştırılabilir:
 
@@ -111,8 +111,8 @@ npm test
 
 20 veritabanı sözleşme kontrolü yerelde geçti. Auth tabloları ve auth.uid test
 fixtures'larıdır; e-posta, JWT doğrulama, gerçek RLS ortam ayarı ve eşzamanlı
-iki ağ isteği testi değildir. Flutter yeni sürüm testleri henüz çalıştırılamadı;
-Dart format/sözdizimi kontrolü ve git diff --check geçti.
+iki ağ isteği testi değildir. Flutter testleri GitHub Actions üzerinde geçti;
+Dart format/sözdizimi kontrolü ve git diff --check de geçti.
 
 ## Yayın öncesi kalanlar
 
@@ -153,7 +153,7 @@ node --test tool/edge-tests/delete-account.test.mjs
 Canlı servise oturumsuz istek 401 AUTH_REQUIRED döndürdü. Gerçek hesabı silen
 uçtan uca test yapılmadı; testlerin geçmesi SMTP, gerçek JWT veya SDK ile
 başarılı silme akışının doğrulandığı anlamına gelmez. Flutter diyalog testleri
-eklendi, fakat bu ortamda çalıştırılamadı.
+eklendi ve GitHub Actions üzerinde geçti.
 
 Kabul testi için yalnızca silinmesi amaçlanan bir test hesabı kullanın:
 
@@ -165,4 +165,5 @@ Kabul testi için yalnızca silinmesi amaçlanan bir test hesabı kullanın:
 6. Silme servisi hata verirse başarı mesajı gösterilmemeli. Oturum iptalinden
    sonra silme başarısız olduysa kullanıcı tekrar giriş yapıp deneyebilir.
 
-Şifre sıfırlama ve mobil doğrulama bağlantısı bu sürümün kapsamına dahil değildir.
+Şifre sıfırlama ve mobil doğrulama bağlantısı yayın hazırlığı dalında eklendi;
+canlı e-posta/redirect kabul testi henüz tamamlanmadı. Bkz. TESTFLIGHT.md.
