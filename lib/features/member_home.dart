@@ -4,6 +4,7 @@ import '../demo_app.dart' show GameScreen;
 import 'profile_editor.dart';
 import 'account_settings.dart';
 import 'profile_photo.dart';
+import 'game_lobby.dart';
 
 class MemberHome extends StatefulWidget {
   const MemberHome({super.key, required this.backend});
@@ -305,8 +306,11 @@ class _MemberHomeState extends State<MemberHome> {
                 child: ListTile(
                   leading: ProfilePhoto(backend: widget.backend, path: c.photoPath),
                   title: Text(c.name),
+                  onTap: acting ? null : () => Navigator.of(context).push<void>(
+                    MaterialPageRoute(builder: (_) => GameLobby(backend: widget.backend, connection: c)),
+                  ),
                   subtitle: const Text(
-                    'Eşleşme kaydedildi · Oyun daveti yakında',
+                    'Oyun davetini aç',
                   ),
                   trailing: menu(c.otherId),
                 ),
