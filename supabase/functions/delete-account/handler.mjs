@@ -24,23 +24,34 @@ export async function handleDelete(request, createClients) {
   if (!body || body.confirmation !== 'DELETE' || typeof body.password !== 'string' || body.password.length < 1 || body.password.length > 256) {
     return reply(400, 'CONFIRMATION_REQUIRED');
   }
+  let photos, owner, lock, deletedAccount = false;
   try {
-    const { auth, admin } = createClients();
+    const clients = createClients();
+    const { auth, admin } = clients;
+    photos = clients.photos;
     const verified = await auth.auth.getUser(token);
     const user = verified.data?.user;
     if (verified.error || !user || !user.email || !user.email_confirmed_at || user.is_anonymous) return reply(401, 'AUTH_REQUIRED');
     const reauth = await auth.auth.signInWithPassword({ email: user.email, password: body.password });
     const newToken = reauth.data?.session?.access_token;
     if (reauth.error || reauth.data?.user?.id !== user.id || !newToken) return reply(403, 'PASSWORD_INVALID');
+    owner = user.id;
+    lock = await photos.prepare(owner);
     // Revoke refresh sessions before deletion. Database actor() also rejects a
     // removed auth.users row, so outstanding access JWTs cannot access app data.
     const revoked = await admin.auth.admin.signOut(newToken, 'global');
     if (revoked.error) return reply(503, 'SESSION_REVOCATION_FAILED');
+    await photos.cleanup(owner);
     const deleted = await admin.auth.admin.deleteUser(user.id, false);
     if (deleted.error) return reply(503, 'DELETE_FAILED');
+    deletedAccount = true;
     return reply(200);
-  } catch {
+  } catch (error) {
     // Never echo password, JWT, SDK errors, or service credentials.
-    return reply(503, 'SERVICE_UNAVAILABLE');
+    return reply(503, error?.message === 'DELETE_IN_PROGRESS' ? 'DELETE_IN_PROGRESS' : 'SERVICE_UNAVAILABLE');
+  } finally {
+    if (lock && owner && !deletedAccount) {
+      try { await photos.restore(owner, lock); } catch { /* Lease permits a retry after 10 minutes if unlock fails. */ }
+    }
   }
 }

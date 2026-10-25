@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../backend/repository.dart';
+import 'profile_photo.dart';
 
 class ProfileEditor extends StatefulWidget {
   const ProfileEditor({
@@ -86,6 +87,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
     child: ListView(
       padding: const EdgeInsets.all(24),
       children: [
+        if (widget.initial != null) ProfilePhotoEditor(backend: widget.backend, initialPath: widget.initial!.person.photoPath),
         Text(
           widget.initial == null ? 'Seni biraz tanıyalım.' : 'Profilin',
           style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold),

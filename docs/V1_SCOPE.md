@@ -9,7 +9,7 @@
 | Alan | 1.0.0 kabulü | Mevcut durum |
 | --- | --- | --- |
 | Üyelik | Kayıt, doğrulama, giriş/çıkış, sıfırlama, hesap silme; gerçek cihazda soğuk/sıcak başlangıç | Kod var; gerçek e-posta/cihaz kabulü eksik |
-| Profil | 18+ profil, düzenleme, fotoğraf, görünürlük ve keşfet tercihleri | Metin profili var; fotoğraf/tercihler eksik |
+| Profil | 18+ profil, düzenleme, fotoğraf, görünürlük ve keşfet tercihleri | Metin profili var; fotoğraf geliştirme dalında, gerçek cihaz kabulü ve tercihler eksik |
 | Keşfet | Tercihlere uygun, engelli/yasaklı hesapları dışlayan, devamı yüklenebilen liste | 20 kayıtlık sayfalama var; tercihler eksik |
 | Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni ve sayfalama var; ayrılma/otomatik güncelleme eksik |
 | Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Yok; mevcut oyun tek kişilik antrenman |
@@ -50,3 +50,5 @@ istek ve oturum kaybı senaryoları test edilmeden aşama tamamlanmış sayılma
 
 Geçmişte silinmiş beğeni olayları geri üretilemez. Migration, halen kayıtlı son
 24 saatlik beğenileri aktarır; tam günlük muhasebe dağıtımdan itibaren oluşur.
+
+Oyun tasarımı ve henüz onaylanmamış ürün kuralları: [GAME_PLAN.md](GAME_PLAN.md).

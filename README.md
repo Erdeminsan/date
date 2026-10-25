@@ -101,3 +101,6 @@ ile aşılmasını ve yasaklı hedeflerin keşfet/eşleşmelerde görünmesini k
 
 Keşfet ve eşleşmeler artık 20 kayıtlık sayfalarla yüklenir. Eşleşme adları tek
 sorguda gelir; Daha fazla ile devam edilir, Yenile ile ilk sayfaya dönülür.
+
+Fotoğraf iş akışı: [PROFILE_PHOTOS.md](docs/PROFILE_PHOTOS.md).
+Çok oyunculu oyun tasarımı: [GAME_PLAN.md](docs/GAME_PLAN.md).

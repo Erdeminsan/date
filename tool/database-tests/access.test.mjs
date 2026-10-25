@@ -24,8 +24,15 @@ async function save(name, date = '2000-01-01') {
 }
 try {
   await db.exec(`
-    create role anon nologin; create role authenticated nologin;
+    create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls;
     create schema auth;
+    -- Storage service fixtures validate policies, not the hosted object API.
+    create schema storage;
+    create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text,unique(bucket_id,name));
+    alter table storage.objects enable row level security;
+    grant usage on schema storage to authenticated;
+    grant select,insert,delete on storage.objects to authenticated;
     create table auth.users(id uuid primary key, email_confirmed_at timestamptz,
       is_anonymous boolean not null default false, deleted_at timestamptz, banned_until timestamptz);
     create function auth.uid() returns uuid language sql stable as $$
@@ -220,6 +227,49 @@ try {
     assert.equal((await db.query('select * from public.matches_page()')).rows.length,0);
     await db.exec('reset role');
     await db.query('delete from auth.users where id=any($1::uuid[])',[targetIds]);
+  });
+  await check('private photos obey ownership, visibility, block and quota policies', async () => {
+    const paths=Array.from({length:4},(_,i)=>`${ids.a}/30000000-0000-4000-8000-${String(i+1).padStart(12,'0')}.jpg`);
+    await asUser('a');
+    await db.query("insert into storage.objects(bucket_id,name) values('profile-photos',$1)",[paths[0]]);
+    await db.query('select public.set_profile_photo($1)',[paths[0]]);
+    // Current photos cannot be deleted by a delayed cleanup request.
+    await db.query('delete from storage.objects where name=$1',[paths[0]]);
+    assert.equal((await db.query('select * from storage.objects where name=$1',[paths[0]])).rows.length,1);
+    await asUser('b');
+    assert.equal((await db.query('select * from storage.objects where name=$1',[paths[0]])).rows.length,1);
+    await assert.rejects(() => db.query('select public.set_profile_photo($1)',[paths[0]]), /PHOTO_UNAVAILABLE/);
+    await assert.rejects(() => db.query("insert into storage.objects(bucket_id,name) values('profile-photos',$1)",[paths[1]]), /row-level security/);
+    await asUser('a');
+    await db.query("select public.save_profile('Alice','2000-01-01','Private city','Private interests',false)");
+    await asUser('b'); assert.equal((await db.query('select * from storage.objects')).rows.length,0);
+    await asUser('a'); await save('Alice');
+    await db.query('select public.block_profile($1)',[ids.c]);
+    await asUser('c'); assert.equal((await db.query('select * from storage.objects')).rows.length,0);
+    await asUser('a'); await db.query('select public.unblock_profile($1)',[ids.c]);
+    await db.query("insert into storage.objects(bucket_id,name) values('profile-photos',$1),('profile-photos',$2)",[paths[1],paths[2]]);
+    await assert.rejects(() => db.query("insert into storage.objects(bucket_id,name) values('profile-photos',$1)",[paths[3]]), /row-level security/);
+    assert.equal((await scalar('select public.set_profile_photo($1) as old',[paths[1]])).old,paths[0]);
+    await db.query('delete from storage.objects where name=$1',[paths[0]]);
+    assert.equal((await db.query('select * from storage.objects where name=$1',[paths[0]])).rows.length,0);
+    await db.query('select public.set_profile_photo(null)');
+    await db.exec('delete from storage.objects');
+  });
+  await check('deletion leases are service-only and prevent photo writes until released', async () => {
+    await asUser('a');
+    await assert.rejects(() => db.query('select public.begin_account_deletion($1)',[ids.a]), /permission denied/);
+    await db.exec('reset role; set role service_role');
+    const token=(await scalar('select public.begin_account_deletion($1) as token',[ids.a])).token;
+    await assert.rejects(() => db.query('select public.begin_account_deletion($1)',[ids.a]), /DELETE_IN_PROGRESS/);
+    await asUser('a'); await assert.rejects(() => save('Alice'), /AUTH_REQUIRED/);
+    await assert.rejects(() => db.query("insert into storage.objects(bucket_id,name) values('profile-photos',$1)",[`${ids.a}/30000000-0000-4000-8000-000000000001.jpg`]), /AUTH_REQUIRED/);
+    await asUser('b'); assert.equal((await db.query('select * from public.profiles where id=$1',[ids.a])).rows.length,0);
+    await db.exec('reset role; set role service_role');
+    await db.query('select public.abort_account_deletion($1,$2)',[ids.a,ids.b]);
+    await asUser('a'); await assert.rejects(() => save('Alice'), /AUTH_REQUIRED/);
+    await db.exec('reset role; set role service_role');
+    await db.query('select public.abort_account_deletion($1,$2)',[ids.a,token]);
+    await asUser('a'); await save('Alice');
   });
   await check('anonymous role has neither data nor RPC access', async () => {
     await db.exec('reset role; set role anon');
