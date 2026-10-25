@@ -37,7 +37,7 @@ try {
   for (const [name, id] of Object.entries(ids)) {
     await db.query('insert into auth.users(id,email_confirmed_at) values($1,$2)', [id, name === 'd' ? null : new Date().toISOString()]);
   }
-  await db.exec(await readFile(new URL('../../supabase/migrations/20261025122511_account_matching_foundation.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../../supabase/migrations/20261025124139_account_matching_foundation.sql', import.meta.url), 'utf8'));
   await check('unconfirmed account cannot create a profile', async () => {
     await asUser('d'); await assert.rejects(() => save('Unconfirmed'), /AUTH_REQUIRED/);
   });

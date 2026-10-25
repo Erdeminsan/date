@@ -3,21 +3,19 @@
 ## Durum
 
 Atideis / playmatch projesi: `fzrfkejwnemtyxgbxxfc`, Frankfurt.
-Şema uygulama isteği araç tarafından reddedildi. Bu PR canlı veritabanına
-uygulanmış değildir. SQL yerel PostgreSQL uyumlu PGlite motorunda test edildi.
-SQL'i canlıya uygulamadan giriş sonrası profil ekranı kurulum eksik hatası gösterir.
+Şema 25 Ekim 2026 tarihinde canlı projeye uygulandı. Altı tablonun RLS ayarı,
+anonim SELECT ve istemci INSERT yasakları doğrulandı. Supabase security advisors
+uyarı döndürmedi. Yerel PostgreSQL uyumlu PGlite testleri de geçti.
 
 ## Veritabanı
 
-`supabase/migrations/20261025122511_account_matching_foundation.sql` ilk şemadır.
-Supabase Dashboard > SQL Editor üzerinden dosyanın tamamı bir transaction içinde
-çalıştırılabilir. Tercih edilen ekip akışı, Supabase CLI ile projeyi link edip
-migration'ı `db push` ile uygulamaktır; komutların güncel seçeneklerini `--help`
-ile doğrulayın. Bu migration yalnızca boş PlayMatch şemasına bir kez uygulanır.
-Diğer Supabase projelerine uygulamayın. Veri taşıma veya yıkıcı değişiklik içermez.
+`supabase/migrations/20261025124139_account_matching_foundation.sql` ilk şemadır.
+Bu dosya mevcut PlayMatch projesinde zaten uygulanmıştır; tekrar çalıştırmayın.
+Dosya sürümü sunucunun migration geçmişindeki `20261025124139` ile eşleştirildi.
+Yeni bir boş geliştirme ortamına migration akışıyla uygulanabilir.
 
-Canlıya uygulama sonrası tablo/RLS kontrolü, security advisors ve iki gerçek
-hesapla kabul testi gerekir. Yerel auth fixtures gerçek Supabase Auth yerine geçmez.
+Canlı güvenlik kontrolleri tamamlandı; iki gerçek hesapla uçtan uca kabul testi
+henüz yapılmadı. Yerel auth fixtures gerçek Supabase Auth yerine geçmez.
 
 ## E-posta / giriş
 

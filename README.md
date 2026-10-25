@@ -9,9 +9,10 @@ beğeniyle eşleşme, görünürlük, engelleme ve şikâyet kodu eklendi.
 Şehir/doğum tarihi/ilgi alanları sadece sahibine açıktır. Oyun şu an antrenmandır;
 gerçek profil bilgisi açmaz. Önceki çevrimdışı demo ayrı modda korunur.
 
-**Durum:** Supabase projesi mevcut; migration uygulama isteği reddedildiği için
-canlı şema henüz kurulmadı. Yeni Flutter testleri çalıştırılmadı. Bu dal geliştirme
-incelemesi içindir, hazır bir üretim veya TestFlight sürümü değildir.
+**Durum:** Supabase şeması canlı projeye uygulandı. Altı tablonun RLS ve temel
+yetkileri doğrulandı; security advisors uyarı döndürmedi. Yeni Flutter testleri
+ve iki gerçek hesapla kabul testi henüz çalıştırılmadı. Bu dal geliştirme
+incelemesi içindir; hazır bir üretim veya TestFlight sürümü değildir.
 
 ## Başlatma
 
@@ -46,8 +47,8 @@ flutter run --dart-define=DEMO_MODE=true
 ## Doğrulama
 
 Dart format/sözdizimi ve `git diff --check` geçti. Yerel veritabanında 16 erişim
-ve iş kuralı kontrolü geçti. Yeni Flutter analiz/widget testleri ve canlı Supabase
-kabul testleri henüz çalıştırılmadı. Önceki 0.1 demoda 5 test kullanıcı Mac'inde geçmişti.
+ve iş kuralı kontrolü geçti. Canlı Supabase RLS/yetki ve security advisor kontrolleri geçti.
+Yeni Flutter analiz/widget testleri ve iki hesap kabul testi henüz çalıştırılmadı. Önceki 0.1 demoda 5 test kullanıcı Mac'inde geçmişti.
 
 ```bash
 flutter analyze
@@ -69,7 +70,8 @@ imzalama sırları repoya girmez. Platform projelerini `scripts/setup.sh` üreti
 - [x] Yerel demo, oyun ve testleri
 - [x] Supabase hesabı/projesi
 - [x] Auth/profil/eşleşme Flutter kodu ve RLS migration
-- [ ] Migration'ı canlı projeye uygula; advisors ve iki hesap testi
+- [x] Migration canlı projede; RLS/yetkiler ve security advisors doğrulandı
+- [ ] İki gerçek hesapla kabul testi
 - [ ] Flutter analiz/test ve lockfile doğrulaması
 - [ ] Fotoğraf, oyun odaları, senkron tur, sunucuda skor doğrulama
 - [ ] Bilgi açma, mesajlaşma, Realtime
