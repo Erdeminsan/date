@@ -18,12 +18,16 @@ Ayarlar ekranında engellenen kişileri yönetme ve şifre + SİL onayıyla hesa
 kalıcı silme eklendi. Hesap silme servisi canlıda; gerçek hesapla uçtan uca
 silme testi henüz yapılmadı.
 
+TestFlight hazırlığı ve mevcut yayın engelleri: [TESTFLIGHT.md](docs/TESTFLIGHT.md).
+Şifre sıfırlama ekranı ve native dönüş bağlantısı eklendi; dashboard redirect/SMTP
+ayarları ve gerçek cihaz testi hâlâ gerekir. CI Flutter 3.38.0 ile çalışır.
+
 ## Başlatma
 
 ```bash
 git clone https://github.com/Erdeminsan/date.git
 cd date
-git switch feature/account-lifecycle
+git switch feature/testflight-readiness
 bash scripts/setup.sh
 flutter run --dart-define-from-file=config/development.json
 ```

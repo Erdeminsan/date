@@ -9,7 +9,9 @@ class AuthPanel extends StatefulWidget {
     super.key,
     required this.authenticate,
     required this.resend,
+    this.resetPassword,
   });
+  final Future<void> Function(String email)? resetPassword;
   final Authenticate authenticate;
   final Future<void> Function(String email) resend;
   @override
@@ -74,12 +76,37 @@ class _AuthPanelState extends State<AuthPanel> {
     }
   }
 
+  Future<void> resetPassword() async {
+    if (busy) return;
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email.text.trim())) {
+      setState(() => notice = 'Şifre sıfırlamak için geçerli bir e-posta gir.');
+      return;
+    }
+    setState(() {
+      busy = true;
+      notice = null;
+    });
+    try {
+      await widget.resetPassword!(email.text.trim());
+      if (mounted)
+        setState(
+          () =>
+              notice =
+                  'Uygun bir hesap varsa sıfırlama e-postası gönderildi. Bağlantıyı bu cihazda aç.',
+        );
+    } catch (e) {
+      if (mounted) setState(() => notice = friendlyError(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: const Text('playmatch'),
       actions: const [
-        Padding(padding: EdgeInsets.all(16), child: Text('BETA 0.2')),
+        Padding(padding: EdgeInsets.all(16), child: Text('KAPALI BETA')),
       ],
     ),
     body: SafeArea(
@@ -186,6 +213,11 @@ class _AuthPanelState extends State<AuthPanel> {
                   onPressed: busy ? null : resend,
                   child: const Text('Doğrulama e-postasını tekrar gönder'),
                 ),
+                if (!signup && widget.resetPassword != null)
+                  TextButton(
+                    onPressed: busy ? null : resetPassword,
+                    child: const Text('Şifremi unuttum'),
+                  ),
                 const SizedBox(height: 12),
                 const Text(
                   'Kapalı geliştirme betası. İki kişilik oyun ve mesajlaşma henüz kullanıma açık değil.',

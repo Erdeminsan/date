@@ -1,0 +1,74 @@
+name: Verify beta
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  flutter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install pinned Flutter in isolated runner
+        env:
+          CI: 'true'
+        run: |
+          git clone --depth 1 --branch 3.38.0 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          test "$(git -C "$RUNNER_TEMP/flutter" rev-parse HEAD)" = a0e9b9dbf78c8a5ef39b45a7efd40ed2de19c1a7
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/flutter/bin/flutter" config --no-analytics
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: python3 -m unittest discover -s tool/release-tests -v
+      - run: npm ci --ignore-scripts --prefix tool/database-tests
+      - run: node tool/database-tests/access.test.mjs
+      - run: node --test tool/edge-tests/delete-account.test.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: dependency-lock
+          path: pubspec.lock
+          if-no-files-found: ignore
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Select Xcode 26
+        run: |
+          python3 - <<'PY'
+          import pathlib, subprocess
+          apps = sorted(pathlib.Path('/Applications').glob('Xcode_26*.app'))
+          if not apps: raise SystemExit('Xcode 26 is required; update runner image.')
+          subprocess.run(['sudo','xcode-select','-s',str(apps[-1] / 'Contents/Developer')], check=True)
+          PY
+          xcodebuild -version
+      - name: Install pinned Flutter
+        run: |
+          git clone --depth 1 --branch 3.38.0 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          test "$(git -C "$RUNNER_TEMP/flutter" rev-parse HEAD)" = a0e9b9dbf78c8a5ef39b45a7efd40ed2de19c1a7
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/flutter/bin/flutter" config --no-analytics
+      - run: bash scripts/bootstrap_platforms.sh
+      - run: flutter pub get
+      - name: Compile real backend iOS release (unsigned)
+        run: flutter build ios --release --no-codesign --dart-define-from-file=config/development.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ios-project-and-lock
+          path: |
+            ios/Runner/Info.plist
+            ios/Runner.xcodeproj/project.pbxproj
+            ios/Podfile.lock
+            pubspec.lock

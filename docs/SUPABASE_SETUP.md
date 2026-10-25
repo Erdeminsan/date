@@ -27,8 +27,9 @@ henüz yapılmadı. Yerel auth fixtures gerçek Supabase Auth yerine geçmez.
   olarak yapılandırın. Varsayılan localhost yönlendirmesi mobil kullanıcı için
   hazır bir dönüş akışı değildir.
 - Bu sürüm e-posta bağlantısı açıldıktan sonra uygulamaya dönüp e-posta/şifreyle
-  giriş yapmayı destekler. Otomatik uygulamaya dönüş/deep link ve şifre sıfırlama
-  henüz yoktur. Güvenlik kontrolünü aşmak için Confirm email kapatılmamalıdır.
+  giriş yapmayı destekler. Native dönüş ve şifre sıfırlama kodu eklendi;
+  TESTFLIGHT.md içindeki redirect ve cihaz kabul adımları tamamlanmalıdır.
+  Güvenlik kontrolünü aşmak için Confirm email kapatılmamalıdır.
 - Kayıt sonucunda hesap zaten varsa Supabase e-posta gizliliği için aynı yanıtı
   döndürebilir; kullanıcıya kesin hesap oluşturuldu iddiası gösterilmez.
 
@@ -165,4 +166,5 @@ Kabul testi için yalnızca silinmesi amaçlanan bir test hesabı kullanın:
 6. Silme servisi hata verirse başarı mesajı gösterilmemeli. Oturum iptalinden
    sonra silme başarısız olduysa kullanıcı tekrar giriş yapıp deneyebilir.
 
-Şifre sıfırlama ve mobil doğrulama bağlantısı bu sürümün kapsamına dahil değildir.
+Şifre sıfırlama ve mobil doğrulama bağlantısı yayın hazırlığı dalında eklendi;
+canlı e-posta/redirect kabul testi henüz tamamlanmadı. Bkz. TESTFLIGHT.md.
