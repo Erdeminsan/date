@@ -51,3 +51,5 @@ INSERT yapamıyor; oda tablosunda RLS açık. Güvenlik danışmanında yalnızc
 `app_private.account_deletions`, `like_events` ve `game_invite_events` için
 bilerek istemci politikası verilmeyen özel tablo INFO kayıtları bulunuyor.
 [Açıklama](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+
+Hazır olma ve ortak turun sonraki aşaması: [SHARED_ROUND.md](SHARED_ROUND.md).

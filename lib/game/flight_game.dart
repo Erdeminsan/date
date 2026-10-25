@@ -1,16 +1,18 @@
 import 'dart:ui';
 import 'package:flame/game.dart';
 import 'round.dart';
+import 'shared_round.dart';
 
 class FlightGame extends FlameGame {
-  FlightGame({required this.onFinished});
+  FlightGame({required this.onFinished, this.shared});
+  final SharedRound? shared;
   final void Function(int score) onFinished;
   final session = PracticeSession();
-  Round get round => session.round;
-  double get countdown => session.countdown;
+  Round get round => shared?.round ?? session.round;
+  double get countdown => shared?.countdown ?? session.countdown;
   bool reported = false;
   void flap() {
-    session.flap();
+    if (shared != null) { shared!.flap(); } else { session.flap(); }
   }
 
   void suspendPractice() {
@@ -27,8 +29,8 @@ class FlightGame extends FlameGame {
   @override
   void update(double dt) {
     super.update(dt);
-    session.advance(dt);
-    if (round.finished && !reported) {
+    if (shared != null) { shared!.advance(); } else { session.advance(dt); }
+    if (round.finished && shared?.aborted != true && !reported) {
       reported = true;
       onFinished(round.score);
     }
