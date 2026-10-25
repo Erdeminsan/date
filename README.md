@@ -92,3 +92,9 @@ imzalama sırları repoya girmez. Platform projelerini `scripts/setup.sh` üreti
 Resmi referanslar: [Flutter iOS](https://docs.flutter.dev/deployment/ios),
 [Supabase Flutter](https://supabase.com/docs/reference/dart/introduction),
 [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security).
+
+## 1.0.0 hedefi
+
+Tüm temel özellikler ve kabul ölçütleri [V1_SCOPE.md](docs/V1_SCOPE.md) içinde.
+1.0.0 henüz yayınlanmadı. İlk güvenlik düzeltmeleri beğeni limitinin engelleme
+ile aşılmasını ve yasaklı hedeflerin keşfet/eşleşmelerde görünmesini kapatır.

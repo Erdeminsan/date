@@ -124,6 +124,51 @@ try {
     await asUser('a');
     await assert.rejects(() => db.query('select public.like_profile($1)',[ids.c]), /PROFILE_UNAVAILABLE/);
   });
+  await check('banned targets disappear from discovery, direct reads and matches', async () => {
+    await asUser('a'); await db.query('select public.like_profile($1)',[ids.b]);
+    assert.equal((await db.query('select * from public.matches')).rows.length,1);
+    await db.exec('reset role');
+    await db.query("update auth.users set banned_until=now()+interval '7 days' where id=$1",[ids.b]);
+    await asUser('c');
+    assert.ok(!(await db.query('select * from public.discover_profiles()')).rows.some(p => p.id === ids.b));
+    await asUser('a');
+    assert.equal((await db.query('select * from public.profiles where id=$1',[ids.b])).rows.length,0);
+    assert.equal((await db.query('select * from public.matches')).rows.length,0);
+    await assert.rejects(() => db.query('select public.like_profile($1)',[ids.b]), /PROFILE_UNAVAILABLE/);
+    await asUser('b'); await assert.rejects(() => save('Banned'), /AUTH_REQUIRED/);
+    await db.exec('reset role');
+    await db.query("update auth.users set banned_until=now()-interval '1 second' where id=$1",[ids.b]);
+    await asUser('a');
+    assert.equal((await db.query('select * from public.matches')).rows.length,1);
+  });
+  await check('100-like budget survives blocking; repeats do not consume it', async () => {
+    ids.e = '00000000-0000-4000-8000-000000000005';
+    ids.f = '00000000-0000-4000-8000-000000000006';
+    await db.exec('reset role');
+    for (const id of [ids.e,ids.f]) await db.query('insert into auth.users(id,email_confirmed_at) values($1,now())',[id]);
+    await asUser('e'); await save('Erin');
+    await asUser('f'); await save('Finn');
+    await asUser('e');
+    for (let i=0; i<100; i++) {
+      await db.query('select public.like_profile($1)',[ids.f]);
+      // An idempotent retry must never spend another unit.
+      await db.query('select public.like_profile($1)',[ids.f]);
+      await db.query('select public.block_profile($1)',[ids.f]);
+      await db.query('select public.unblock_profile($1)',[ids.f]);
+    }
+    await assert.rejects(() => db.query('select public.like_profile($1)',[ids.f]), /LIKE_LIMIT/);
+    assert.equal((await db.query('select * from public.likes')).rows.length,0);
+    await assert.rejects(() => db.exec('select * from app_private.like_events'), /permission denied/);
+    await assert.rejects(() => db.exec('delete from app_private.like_events'), /permission denied/);
+    await db.exec('reset role');
+    assert.equal(Number((await scalar('select count(*) as count from app_private.like_events where actor_id=$1',[ids.e])).count),100);
+    await db.query("update app_private.like_events set created_at=now()-interval '25 hours' where actor_id=$1",[ids.e]);
+    await asUser('e'); await db.query('select public.like_profile($1)',[ids.f]);
+    await db.exec('reset role');
+    assert.equal(Number((await scalar('select count(*) as count from app_private.like_events where actor_id=$1',[ids.e])).count),1);
+    await db.query('delete from auth.users where id in ($1,$2)',[ids.e,ids.f]);
+    assert.equal(Number((await scalar('select count(*) as count from app_private.like_events where actor_id=$1',[ids.e])).count),0);
+  });
   await check('anonymous role has neither data nor RPC access', async () => {
     await db.exec('reset role; set role anon');
     await assert.rejects(() => db.exec('select * from public.profiles'), /permission denied/);

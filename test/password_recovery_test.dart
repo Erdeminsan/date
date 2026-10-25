@@ -51,4 +51,16 @@ void main() {
     expect(saves, 1);
     expect(finishes, 2);
   });
+  testWidgets('Cancel leaves recovery without changing the password', (tester) async {
+    var saves = 0, cancels = 0;
+    await tester.pumpWidget(MaterialApp(home: PasswordRecovery(
+      save: (_) async { saves++; }, finish: () async {},
+      cancel: () async { cancels++; },
+    )));
+    await tester.tap(find.text('Vazgeç ve girişe dön'));
+    await tester.pumpAndSettle();
+    expect(saves, 0);
+    expect(cancels, 1);
+  });
+
 }
