@@ -169,9 +169,63 @@ try {
     await db.query('delete from auth.users where id in ($1,$2)',[ids.e,ids.f]);
     assert.equal(Number((await scalar('select count(*) as count from app_private.like_events where actor_id=$1',[ids.e])).count),0);
   });
+  await check('keyset pages cover tied timestamps without overlap and enforce RLS', async () => {
+    const targetIds = Array.from({length:65}, (_,i) => `10000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`);
+    await db.exec('reset role');
+    for (let i=0; i<targetIds.length; i++) {
+      await db.query('insert into auth.users(id,email_confirmed_at) values($1,now())',[targetIds[i]]);
+      await db.query("insert into public.profiles(id,display_name,created_at) values($1,$2,'2020-01-01T00:00:00.123456Z')",[targetIds[i],`Page ${i}`]);
+      await db.query("insert into public.matches(id,user_low,user_high,created_at) values($1,$2,$3,'2020-01-01T00:00:00.123456Z')",[`20000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`,ids.a,targetIds[i]]);
+    }
+    await db.query('update public.profiles set discoverable=false where id=$1',[targetIds[0]]);
+    await db.query("update auth.users set banned_until=now()+interval '1 day' where id=$1",[targetIds[1]]);
+    await asUser('a');
+    await db.query('select public.block_profile($1)',[targetIds[2]]);
+    await db.query('select public.like_profile($1)',[targetIds[3]]);
+    async function pages(fn) {
+      const seen=[]; let cursor=[null,null];
+      for (let attempt=0; attempt<10; attempt++) {
+        const rows=(await db.query(`select *, created_at::text as cursor_time from public.${fn}($1::timestamptz,$2::uuid)`,cursor)).rows;
+        assert.ok(rows.length <= 21);
+        const visible=rows.slice(0,20); seen.push(...visible);
+        if (rows.length <=20) return seen;
+        const last=visible.at(-1);
+        // PostgreSQL timestamp text is preserved by the client.
+        cursor=[last.cursor_time,last.id];
+      }
+      throw Error('Pagination did not terminate');
+    }
+    const discover=await pages('discover_page');
+    assert.equal(new Set(discover.map(r=>r.id)).size,discover.length);
+    assert.deepEqual(new Set(discover.filter(r=>targetIds.includes(r.id)).map(r=>r.id)),new Set(targetIds.slice(4)));
+    // Delete a seen row and insert a newer row between page requests.
+    const initial=(await db.query('select *,created_at::text as cursor_time from public.discover_page()')).rows.slice(0,20);
+    const boundary=initial.at(-1);
+    await db.exec('reset role');
+    await db.query('delete from auth.users where id=$1',[initial[0].id]);
+    const newest='10000000-0000-4000-8000-000000000066';
+    targetIds.push(newest);
+    await db.query('insert into auth.users(id,email_confirmed_at) values($1,now())',[newest]);
+    await db.query("insert into public.profiles(id,display_name) values($1,'Newest')",[newest]);
+    await asUser('a');
+    const next=(await db.query('select * from public.discover_page($1::timestamptz,$2::uuid)',[boundary.cursor_time,boundary.id])).rows.slice(0,20);
+    assert.deepEqual(next.map(r=>r.id),discover.slice(20,40).map(r=>r.id));
+    const matches=await pages('matches_page');
+    assert.equal(new Set(matches.map(r=>r.id)).size,matches.length);
+    assert.equal(matches.filter(r=>targetIds.includes(r.other_id)).length,62);
+    assert.equal(matches.find(r=>r.other_id===targetIds[0]).display_name,'Gizli profil');
+    assert.ok(!matches.some(r=>r.other_id===targetIds[1] || r.other_id===targetIds[2]));
+    await assert.rejects(() => db.query('select * from public.discover_page(now(),null)'), /INVALID_CURSOR/);
+    await asUser('c');
+    assert.equal((await db.query('select * from public.matches_page()')).rows.length,0);
+    await db.exec('reset role');
+    await db.query('delete from auth.users where id=any($1::uuid[])',[targetIds]);
+  });
   await check('anonymous role has neither data nor RPC access', async () => {
     await db.exec('reset role; set role anon');
     await assert.rejects(() => db.exec('select * from public.profiles'), /permission denied/);
+    await assert.rejects(() => db.exec('select * from public.discover_page()'), /permission denied/);
+    await assert.rejects(() => db.exec('select * from public.matches_page()'), /permission denied/);
     await assert.rejects(() => db.query('select public.like_profile($1)',[ids.a]), /permission denied/);
     await assert.rejects(() => db.query('select public.blocked_profiles()'), /permission denied/);
     await assert.rejects(() => db.query('select public.unblock_profile($1)',[ids.a]), /permission denied/);

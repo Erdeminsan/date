@@ -27,6 +27,27 @@ class Connection {
   final String name;
 }
 
+class FeedCursor {
+  const FeedCursor(this.createdAt, this.id);
+  // Keep PostgreSQL microseconds intact; do not round through a local date.
+  final String createdAt;
+  final String id;
+  Map<String, dynamic> toParams() => {'p_before_time': createdAt, 'p_before_id': id};
+}
+
+class FeedPage<T> {
+  const FeedPage(this.items, this.next);
+  final List<T> items;
+  final FeedCursor? next;
+}
+
+FeedPage<T> decodeFeedPage<T>(List rows, T Function(Map<String, dynamic>) decode) {
+  final visible = rows.take(20).map((row) => Map<String, dynamic>.from(row as Map)).toList();
+  final last = visible.isEmpty ? null : visible.last;
+  return FeedPage(visible.map(decode).toList(), rows.length > 20 && last != null
+    ? FeedCursor(last['created_at'] as String, last['id'] as String) : null);
+}
+
 class Backend {
   Backend(this.client);
   final SupabaseClient client;
@@ -71,44 +92,19 @@ class Backend {
     );
   }
 
-  Future<List<Person>> discover() async {
-    final rows = await client.rpc('discover_profiles');
-    return (rows as List)
-        .map((r) => Person.fromJson(Map<String, dynamic>.from(r as Map)))
-        .toList();
+  Future<FeedPage<Person>> discover({FeedCursor? before}) async {
+    final rows = await client.rpc('discover_page', params: before?.toParams() ?? {});
+    return decodeFeedPage<Person>(rows as List, Person.fromJson);
   }
 
   Future<bool> like(String id) async =>
       await client.rpc('like_profile', params: {'p_target': id}) != null;
 
-  Future<List<Connection>> matches() async {
-    final user = userId;
-    final rows = await client
-        .from('matches')
-        .select()
-        .order('created_at', ascending: false)
-        .limit(100);
-    final result = <Connection>[];
-    for (final r in rows) {
-      final other =
-          r['user_low'] == user
-              ? r['user_high'] as String
-              : r['user_low'] as String;
-      final p =
-          await client
-              .from('profiles')
-              .select('display_name')
-              .eq('id', other)
-              .maybeSingle();
-      result.add(
-        Connection(
-          r['id'] as String,
-          other,
-          p?['display_name'] as String? ?? 'Gizli profil',
-        ),
-      );
-    }
-    return result;
+  Future<FeedPage<Connection>> matches({FeedCursor? before}) async {
+    final rows = await client.rpc('matches_page', params: before?.toParams() ?? {});
+    return decodeFeedPage<Connection>(rows as List, (r) => Connection(
+      r['id'] as String, r['other_id'] as String, r['display_name'] as String,
+    ));
   }
 
   Future<void> block(String id) async {

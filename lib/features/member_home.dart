@@ -15,7 +15,8 @@ class _MemberHomeState extends State<MemberHome> {
   OwnProfile? profile;
   List<Person> people = [];
   List<Connection> connections = [];
-  bool loading = true, acting = false;
+  bool loading = true, acting = false, loadingMore = false;
+  FeedCursor? peopleCursor, matchesCursor;
   String? error;
   int tab = 0;
   int generation = 0;
@@ -29,19 +30,22 @@ class _MemberHomeState extends State<MemberHome> {
     final request = ++generation;
     setState(() {
       loading = true;
+      loadingMore = false;
       error = null;
     });
     try {
       final p = await widget.backend.profile();
       final candidates =
-          p == null ? <Person>[] : await widget.backend.discover();
+          p == null ? const FeedPage<Person>([], null) : await widget.backend.discover();
       final matches =
-          p == null ? <Connection>[] : await widget.backend.matches();
+          p == null ? const FeedPage<Connection>([], null) : await widget.backend.matches();
       if (!mounted || request != generation) return;
       setState(() {
         profile = p;
-        people = candidates;
-        connections = matches;
+        people = candidates.items;
+        connections = matches.items;
+        peopleCursor = candidates.next;
+        matchesCursor = matches.next;
       });
     } catch (e) {
       if (mounted && request == generation)
@@ -49,6 +53,46 @@ class _MemberHomeState extends State<MemberHome> {
     } finally {
       if (mounted && request == generation) setState(() => loading = false);
     }
+  }
+
+  Future<void> loadMore(bool matching) async {
+    final cursor = matching ? matchesCursor : peopleCursor;
+    if (cursor == null || loading || loadingMore || acting) return;
+    final request = generation;
+    setState(() => loadingMore = true);
+    try {
+      if (matching) {
+        final page = await widget.backend.matches(before: cursor);
+        if (!mounted || request != generation) return;
+        setState(() {
+          connections = {for (final item in [...connections, ...page.items]) item.id: item}.values.toList();
+          matchesCursor = page.next;
+        });
+      } else {
+        final page = await widget.backend.discover(before: cursor);
+        if (!mounted || request != generation) return;
+        setState(() {
+          people = {for (final item in [...people, ...page.items]) item.id: item}.values.toList();
+          peopleCursor = page.next;
+        });
+      }
+    } catch (e) {
+      if (mounted && request == generation) notify(friendlyError(e));
+    } finally {
+      if (mounted && request == generation) setState(() => loadingMore = false);
+    }
+  }
+
+  Widget pageFooter(bool matching) {
+    final cursor = matching ? matchesCursor : peopleCursor;
+    if (cursor == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: OutlinedButton(
+        onPressed: loadingMore || acting ? null : () => loadMore(matching),
+        child: Text(loadingMore ? 'Yükleniyor…' : matching ? 'Daha fazla eşleşme' : 'Daha fazla profil'),
+      ),
+    );
   }
 
   void notify(String text) {
@@ -265,6 +309,7 @@ class _MemberHomeState extends State<MemberHome> {
                   trailing: menu(c.otherId),
                 ),
               ),
+            pageFooter(true),
             const SizedBox(height: 24),
             const Text(
               'Sky Hop antrenmanı',
@@ -366,6 +411,7 @@ class _MemberHomeState extends State<MemberHome> {
                 ),
               ),
             ),
+          pageFooter(false),
         ],
       ),
     );

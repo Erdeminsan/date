@@ -78,8 +78,8 @@ Antrenman skoru gerçek profil kilidi açmaz.
 12. Bağlantıyı kes: okunabilir hata ve tekrar dene işlemi görünmeli.
 
 Bu sürüm otomatik Realtime yenileme yerine aşağı çekerek/yenile düğmesiyle
-senkronize edilir. Keşfet sayfası bir istekte 40 profil, eşleşmeler 100 kayıt
-ile sınırlıdır; geniş ölçekli sayfalama sonraki adımdır.
+senkronize edilir. Yeni istemci keşfet ve eşleşmeleri 20 kayıtlık sayfalarla
+yükler; Daha fazla düğmesiyle devam eder. Yenileme listeyi ilk sayfaya döndürür.
 
 ## Veri ve erişim tasarımı
 
@@ -182,3 +182,24 @@ INFO kaydı verdi: tablo bilinçli olarak istemci politikası olmadan tüm eriş
 reddeder; yazma/okuma sahibi olan kontrollü definer fonksiyondadır. Bu tabloyu
 public API şemasına taşımayın veya istemciye yetki vermeyin.
 Açıklama: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
+
+
+## Sayfalama
+
+`20261025164617_paginated_feeds.sql` canlı geliştirme projesine uygulandı.
+Yeni `discover_page` ve `matches_page` RPC'leri SECURITY INVOKER ile mevcut
+RLS'yi korur. Anonim EXECUTE kapalıdır. Eşleşmeler, RLS'ye tabi tek bir join
+sorgusuyla adlarını da getirir; gizli profil için yalnızca “Gizli profil” görünür.
+
+Sayfalar `(created_at, id)` azalan sırasındadır. 21 kayıt döner; istemci ilk
+20'sini gösterir ve son gösterilen kaydın zaman/id değerini sonraki isteğe taşır.
+Zaman damgası mikrosaniye hassasiyetini kaybetmemek için ham metin olarak tutulur.
+Yeni kayıtlar mevcut sayfaların başına eklenmez; yenileyince görünür. Liste
+bir veritabanı snapshot'ı değildir; daha önce yüklenen kartların sonradan değişen
+engel/yasak durumu yenilemede görünür, RPC yazma izinleri her istekte kontrol edilir.
+
+Eski `discover_profiles()` RPC'si eski istemcileri bozmamak için korunur.
+23 veritabanı kontrolü içinde bağlı tarihler, sayfa sınırında ekleme/silme,
+RLS, gizli isim, anonim erişim ve eksik cursor kontrolü vardır. Flutter testleri
+sonraki sayfa hatası/tekrar, tekilleştirme ve yenilemeden sonra eski yanıtın
+atılmasını kapsar. Fotoğraflar, tercihler ve Realtime hâlâ ayrı işlerdir.
