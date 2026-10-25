@@ -1,5 +1,5 @@
 import { PGlite } from '@electric-sql/pglite';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
 // Local PostgreSQL engine; auth.users and auth.uid are compatibility fixtures.
@@ -37,7 +37,10 @@ try {
   for (const [name, id] of Object.entries(ids)) {
     await db.query('insert into auth.users(id,email_confirmed_at) values($1,$2)', [id, name === 'd' ? null : new Date().toISOString()]);
   }
-  await db.exec(await readFile(new URL('../../supabase/migrations/20261025124139_account_matching_foundation.sql', import.meta.url), 'utf8'));
+  const migrationDir = new URL('../../supabase/migrations/', import.meta.url);
+  for (const file of (await readdir(migrationDir)).filter(f => f.endsWith('.sql')).sort()) {
+    await db.exec(await readFile(new URL(file, migrationDir), 'utf8'));
+  }
   await check('unconfirmed account cannot create a profile', async () => {
     await asUser('d'); await assert.rejects(() => save('Unconfirmed'), /AUTH_REQUIRED/);
   });
@@ -89,6 +92,26 @@ try {
     assert.equal((await db.query('select * from public.profiles where id=$1',[ids.a])).rows.length,0);
     assert.equal((await db.query('select * from public.blocks')).rows.length,0);
   });
+  await check('blocked list exposes only names of own blocked profiles', async () => {
+    await asUser('a');
+    assert.deepEqual((await db.query('select * from public.blocked_profiles()')).rows, [{id:ids.b, display_name:'Bob'}]);
+    await asUser('c');
+    assert.equal((await db.query('select * from public.blocked_profiles()')).rows.length,0);
+  });
+  await check('unblocking cannot remove another user block', async () => {
+    await asUser('b'); await db.query('select public.unblock_profile($1)',[ids.a]);
+    await assert.rejects(() => db.query('select public.like_profile($1)',[ids.a]), /PROFILE_UNAVAILABLE/);
+    await db.query('select public.block_profile($1)',[ids.a]);
+    await asUser('a'); await db.query('select public.unblock_profile($1)',[ids.b]);
+    await assert.rejects(() => db.query('select public.like_profile($1)',[ids.b]), /PROFILE_UNAVAILABLE/);
+  });
+  await check('unblocking is idempotent and never restores an old match', async () => {
+    await asUser('b'); await db.query('select public.unblock_profile($1)',[ids.a]);
+    await db.query('select public.unblock_profile($1)',[ids.a]);
+    assert.equal((await db.query('select * from public.matches')).rows.length,0);
+    assert.equal((await db.query('select * from public.likes')).rows.length,0);
+    assert.equal((await scalar('select public.like_profile($1) as id',[ids.a])).id,null);
+  });
   await check('report records are visible only to their reporter', async () => {
     await asUser('a'); await db.query('select public.report_profile($1,$2)',[ids.b,'Unwanted contact']);
     assert.equal((await db.query('select * from public.reports')).rows.length,1);
@@ -105,11 +128,26 @@ try {
     await db.exec('reset role; set role anon');
     await assert.rejects(() => db.exec('select * from public.profiles'), /permission denied/);
     await assert.rejects(() => db.query('select public.like_profile($1)',[ids.a]), /permission denied/);
+    await assert.rejects(() => db.query('select public.blocked_profiles()'), /permission denied/);
+    await assert.rejects(() => db.query('select public.unblock_profile($1)',[ids.a]), /permission denied/);
     await assert.rejects(() => db.query('select app_private.like_profile($1)',[ids.a]), /permission denied/);
   });
   await check('deleted user cannot use a stale user id', async () => {
     await db.exec('reset role'); await db.query('delete from auth.users where id=$1',[ids.c]);
     await asUser('c'); await assert.rejects(() => save('Carol'), /AUTH_REQUIRED/);
+  });
+  await check('deleting an auth account cascades its profile and relationship records', async () => {
+    await asUser('a'); await db.query('select public.like_profile($1)',[ids.b]);
+    assert.equal((await db.query('select * from public.matches')).rows.length,1);
+    await db.exec('reset role');
+    await db.query('delete from auth.users where id=$1',[ids.b]);
+    for (const table of ['likes','matches','blocks','reports']) {
+      assert.equal((await db.query(`select * from public.${table}`)).rows.length,0);
+    }
+    assert.equal((await db.query('select * from public.profiles')).rows.length,1);
+    assert.equal((await db.query('select * from public.profile_details')).rows.length,1);
+    await asUser('b');
+    await assert.rejects(() => db.query('select * from public.blocked_profiles()'), /AUTH_REQUIRED/);
   });
   await check('every application table has RLS enabled', async () => {
     await db.exec('reset role');

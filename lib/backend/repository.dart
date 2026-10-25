@@ -115,6 +115,29 @@ class Backend {
     await client.rpc('block_profile', params: {'p_target': id});
   }
 
+  Future<List<Person>> blockedProfiles() async {
+    final rows = await client.rpc('blocked_profiles');
+    return (rows as List)
+        .map((r) => Person.fromJson(Map<String, dynamic>.from(r as Map)))
+        .toList();
+  }
+
+  Future<void> unblock(String id) async {
+    await client.rpc('unblock_profile', params: {'p_target': id});
+  }
+
+  Future<void> deleteAccount(String password) async {
+    final response = await client.functions.invoke(
+      'delete-account',
+      body: {'password': password, 'confirmation': 'DELETE'},
+    );
+    if (response.status != 200 ||
+        response.data is! Map ||
+        response.data['deleted'] != true) {
+      throw StateError('Account deletion was not confirmed');
+    }
+  }
+
   Future<void> report(String id, String reason) async {
     await client.rpc(
       'report_profile',
@@ -132,6 +155,13 @@ bool isAdult(DateTime birth, DateTime today) {
 }
 
 String friendlyError(Object error) {
+  if (error is FunctionException) {
+    final details = error.details;
+    final code = details is Map ? details['error'] : null;
+    if (code == 'PASSWORD_INVALID') return 'Şifren doğru değil. Tekrar dene.';
+    if (code == 'AUTH_REQUIRED') return 'Oturumun geçersiz. Tekrar giriş yap.';
+    return 'Hesap silinemedi. Bir süre sonra tekrar dene; gerekirse yeniden giriş yap.';
+  }
   if (error is AuthException) {
     switch (error.code) {
       case 'invalid_credentials':
