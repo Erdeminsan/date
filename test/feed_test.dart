@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:playmatch/backend/repository.dart';
 import 'package:playmatch/features/member_home.dart';
 
 const cursor = FeedCursor('2020-01-01T00:00:00.123456Z', 'first');
-class FakeBackend extends Backend {
-  FakeBackend(this.fetch) : super(SupabaseClient('https://example.test', 'test-key', authOptions: const AuthClientOptions(autoRefreshToken: false)));
+class FakeBackend implements Backend {
+  FakeBackend(this.fetch);
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError('Unexpected backend call: ${invocation.memberName}');
   final Future<FeedPage<Person>> Function(FeedCursor?) fetch;
   @override
   Future<OwnProfile?> profile() async => OwnProfile(
@@ -35,7 +36,7 @@ void main() {
   Future<void> open(WidgetTester tester, FakeBackend backend) async {
     tester.view.physicalSize = const Size(430, 1100);
     tester.view.devicePixelRatio = 1;
-    addTearDown(() async { tester.view.resetPhysicalSize(); tester.view.resetDevicePixelRatio(); await backend.client.dispose(); });
+    addTearDown(() { tester.view.resetPhysicalSize(); tester.view.resetDevicePixelRatio(); });
     await tester.pumpWidget(MaterialApp(home: MemberHome(backend: backend)));
     await tester.pumpAndSettle();
   }
