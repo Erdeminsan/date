@@ -88,3 +88,5 @@ Kabul: iki fiziksel cihaz aynı engel akışını görür; sunucu puanı istemci
 uyuşur; istemci doğrudan skor/erişim yazamaz; geçersiz veya yarım tur bilgi
 vermez; tekrar istek ikinci ödül oluşturmaz. Bu kabul geçmeden ortak oyun
 1.0.0 kapsamında tamamlanmış sayılmaz.
+
+Ortak fizik sözleşmesi ve bağımsız motor çalışması: [GAME_ENGINE.md](GAME_ENGINE.md).
