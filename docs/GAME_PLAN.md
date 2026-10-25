@@ -1,6 +1,6 @@
 # 1.0.0 oyun planı — Sky Hop
 
-Durum: tasarım önerisi. Henüz çok oyunculu oda, sunucu skor doğrulaması veya
+Durum: kazananın bilgi açması onaylandı; teknik tasarım ve uygulama aşamaları planlandı. Henüz çok oyunculu oda, sunucu skor doğrulaması veya
 bilgi açma uygulanmadı. Mevcut `Round` / `FlightGame` yalnızca antrenmandır.
 
 ## Oyuncu akışı
@@ -14,12 +14,14 @@ Eşleşme → oyun daveti → kabul → iki oyuncunun hazır olması → ortak g
 korunabilir. Geçilen engel puan verir. Sonuçta puan, çarpışma ve eşitlik açık
 biçimde gösterilir. Sonuç kuralları sürümlenir; istemci sonucu tek başına yazamaz.
 
-## Kullanıcı kararı gereken ürün kuralları
+## Onaylanan oyun ödülü ve açık ürün kararı
 
-Henüz onaylanmış sayılmayan öneri: iki kişi de doğrulanmış turu tamamladığında
-birbirlerinin şehri; ikinci tamamlanan turda ilgi alanları açılır. Kazanan
-skorla ayrıca gösterilir. Alternatif: bilgi açma yalnızca kazanana verilir.
-Bu kural kesinleşmeden bilgi erişim migration'ı yazılmayacak.
+Kullanıcı kararı (25 Ekim 2026): yalnız kazanan rakibinin sıradaki bilgisini
+açar. İlk galibiyette rakibin şehri, ikinci galibiyette ilgi alanları açılır.
+İlerleme her oyuncu için ayrı, ilgili eşleşmeyle sınırlıdır. Kaybeden bilgi
+açmaz; eşitlikte iki tarafa da yeni bilgi verilmez. Her iki oyuncunun da
+geçerli turu tamamlaması gerekir; yarım tur veya kopuş galibiyet ödülü üretmez.
+Zaten açılmış alanlar yeniden ödül sayılmaz; aynı sonuç ikinci kez işlenemez.
 
 Doğum tarihi ve e-posta oyun ödülü olmaz. Şehir/ilgi alanlarını oyunla açmak
 kayıt/profil ekranında açıkça anlatılacak; yalnızca ilgili eşleşme erişebilir.
@@ -73,7 +75,9 @@ iddiası taşımaz.
 2. Davet/oda RPC'leri ve RLS; iki cihazda kabul/ret/iptal, çift davet yarışı.
 3. Sunucu saatiyle başlangıç, sürüm uyumu, mobil lifecycle/kopuş kurtarma.
 4. Sıralı giriş paketleri, replay doğrulama, değiştirilemez/idempotent sonuç.
-5. Onaylanan bilgi açma kuralı ve eşleşmeye özel alan erişimi.
+5. Kazanana özel şehir → ilgi alanı ilerlemesi ve eşleşmeye özel alan erişimi.
+   Kabul: A ilk kez kazanınca yalnız A, B'nin şehrini görür; B kazanırsa
+   kendi ilk alanını açar. Eşitlik ve tekrar sonuç ilerlemeyi değiştirmez.
 6. Oyun sonucu/sohbet bağlantısı, erişilebilirlik, küçük ekran ve performans testi.
 
 Her aşamada üçüncü kullanıcı, yasaklı kullanıcı, engelleme sırasında devam eden

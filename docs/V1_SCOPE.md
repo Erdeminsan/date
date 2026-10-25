@@ -20,8 +20,9 @@
 | Yayın | Otomatik testler, iki gerçek hesap, fiziksel iPhone, ağ kopması, imzalı arşiv ve TestFlight kurulumu | CI geçti; cihaz/imza/kabul eksik |
 
 Oyunla açılacak bilgiler şehir ve ilgi alanlarıdır; doğum tarihi özel kalır.
-Bilgi açılmasının oyun kuralı ve mesajlaşmanın açılma koşulu uygulamaya geçmeden
-önce kesinleştirilecek. Kullanıcıdan onay alınmış bir kazanma/puan kuralı henüz yok.
+Onaylanan kural: yalnız kazananın ilk galibiyetinde rakibinin şehri, ikinci
+galibiyetinde ilgi alanları açılır. Eşitlikte bilgi açılmaz. Mesajlaşmanın
+açılma koşulu henüz kesinleşmedi.
 
 ## Uygulama sırası
 
@@ -51,4 +52,4 @@ istek ve oturum kaybı senaryoları test edilmeden aşama tamamlanmış sayılma
 Geçmişte silinmiş beğeni olayları geri üretilemez. Migration, halen kayıtlı son
 24 saatlik beğenileri aktarır; tam günlük muhasebe dağıtımdan itibaren oluşur.
 
-Oyun tasarımı ve henüz onaylanmamış ürün kuralları: [GAME_PLAN.md](GAME_PLAN.md).
+Oyun tasarımı, onaylanan ödül kuralı ve açık kararlar: [GAME_PLAN.md](GAME_PLAN.md).
