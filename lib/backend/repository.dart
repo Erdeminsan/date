@@ -1,14 +1,18 @@
+import 'dart:math';
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Person {
-  const Person({required this.id, required this.name, this.visible = true});
+  const Person({required this.id, required this.name, this.visible = true, this.photoPath});
   final String id;
   final String name;
   final bool visible;
+  final String? photoPath;
   factory Person.fromJson(Map<String, dynamic> data) => Person(
     id: data['id'] as String,
     name: data['display_name'] as String,
     visible: data['discoverable'] as bool? ?? true,
+    photoPath: data['photo_path'] as String?,
   );
 }
 
@@ -21,9 +25,10 @@ class OwnProfile {
 }
 
 class Connection {
-  const Connection(this.id, this.otherId, this.name);
+  const Connection(this.id, this.otherId, this.name, {this.photoPath});
   final String id;
   final String otherId;
+  final String? photoPath;
   final String name;
 }
 
@@ -101,10 +106,47 @@ class Backend {
       await client.rpc('like_profile', params: {'p_target': id}) != null;
 
   Future<FeedPage<Connection>> matches({FeedCursor? before}) async {
-    final rows = await client.rpc('matches_page', params: before?.toParams() ?? {});
+    final rows = await client.rpc('matches_page_v2', params: before?.toParams() ?? {});
     return decodeFeedPage<Connection>(rows as List, (r) => Connection(
-      r['id'] as String, r['other_id'] as String, r['display_name'] as String,
+      r['id'] as String, r['other_id'] as String, r['display_name'] as String, photoPath: r['photo_path'] as String?,
     ));
+  }
+
+  Future<Uint8List> downloadPhoto(String path) => client.storage.from('profile-photos').download(path);
+
+  Future<String> uploadPhoto(Uint8List bytes, {required String expectedUserId}) async {
+    if (userId != expectedUserId) throw const AuthException('Session changed');
+    final random = Random.secure();
+    final id = List<int>.generate(16, (_) => random.nextInt(256));
+    id[6] = (id[6] & 15) | 64;
+    id[8] = (id[8] & 63) | 128;
+    final hex = id.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    final uuid = '${hex.substring(0,8)}-${hex.substring(8,12)}-${hex.substring(12,16)}-${hex.substring(16,20)}-${hex.substring(20)}';
+    final path = '$expectedUserId/$uuid.jpg';
+    final bucket = client.storage.from('profile-photos');
+    await bucket.uploadBinary(path, bytes, fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: false));
+    String? previous;
+    try {
+      if (userId != expectedUserId) throw const AuthException('Session changed');
+      previous = await client.rpc('set_profile_photo', params: {'p_path': path}) as String?;
+    } catch (_) {
+      // Storage policy refuses removal if a response was lost after attachment.
+      try { await bucket.remove([path]); } catch (_) {}
+      rethrow;
+    }
+    if (previous != null && previous != path) {
+      try { await bucket.remove([previous]); } catch (_) { /* Account deletion also cleans leftovers. */ }
+    }
+    return path;
+  }
+
+  Future<void> removePhoto({required String expectedUserId}) async {
+    if (userId != expectedUserId) throw const AuthException('Session changed');
+    await client.rpc('set_profile_photo', params: {'p_path': null});
+    final bucket = client.storage.from('profile-photos');
+    final files = await bucket.list(path: expectedUserId);
+    final paths = files.where((f) => f.name.endsWith('.jpg') && !f.name.contains('/')).map((f) => '$expectedUserId/${f.name}').toList();
+    if (paths.isNotEmpty) await bucket.remove(paths);
   }
 
   Future<void> block(String id) async {
@@ -151,9 +193,11 @@ bool isAdult(DateTime birth, DateTime today) {
 }
 
 String friendlyError(Object error) {
+  if (error is StorageException) return 'Fotoğraf işlemi tamamlanamadı. Bağlantını kontrol edip tekrar dene.';
   if (error is FunctionException) {
     final details = error.details;
     final code = details is Map ? details['error'] : null;
+    if (code == 'DELETE_IN_PROGRESS') return 'Hesap silme işlemi sürüyor. Birkaç dakika sonra tekrar dene.';
     if (code == 'PASSWORD_INVALID') return 'Şifren doğru değil. Tekrar dene.';
     if (code == 'AUTH_REQUIRED') return 'Oturumun geçersiz. Tekrar giriş yap.';
     return 'Hesap silinemedi. Bir süre sonra tekrar dene; gerekirse yeniden giriş yap.';

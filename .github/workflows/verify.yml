@@ -26,11 +26,12 @@ jobs:
           "$RUNNER_TEMP/flutter/bin/flutter" config --no-analytics
       - run: flutter pub get --enforce-lockfile
       - run: flutter analyze
+      - run: node --test tool/game-tests/engine.test.mjs
       - run: flutter test
       - run: python3 -m unittest discover -s tool/release-tests -v
       - run: npm ci --ignore-scripts --prefix tool/database-tests
       - run: node tool/database-tests/access.test.mjs
-      - run: node --test tool/edge-tests/delete-account.test.mjs
+      - run: node --test tool/edge-tests/*.test.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

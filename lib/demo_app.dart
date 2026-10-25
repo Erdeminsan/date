@@ -408,7 +408,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     game = FlightGame(
       onFinished:
           (score) => WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) Navigator.pop(context, score);
+            if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+              Navigator.pop(context, score);
+            }
           }),
     );
   }
@@ -416,7 +418,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) {
-      game.pauseEngine();
+      game.suspendPractice();
       if (mounted) setState(() => suspended = true);
     }
   }
@@ -424,7 +426,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    game.pauseEngine();
+    game.suspendPractice();
     super.dispose();
   }
 
@@ -456,7 +458,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         child: FilledButton(
                           onPressed: () {
                             setState(() => suspended = false);
-                            game.resumeEngine();
+                            game.resumePractice();
                           },
                           child: const Text('Devam et'),
                         ),

@@ -6,6 +6,11 @@ const user = { id: 'owner-id', email: 'owner@example.test', email_confirmed_at: 
 function fixture(options = {}) {
   const calls = [];
   return { calls, clients: () => ({
+    photos: {
+      prepare: async id => { calls.push(['prepare',id]); if (options.lockFailure) throw Error('lock'); return 'lease'; },
+      cleanup: async id => { calls.push(['cleanup',id]); if (options.cleanupFailure) throw Error('cleanup'); },
+      restore: async (id,token) => { calls.push(['restore',id,token]); },
+    },
     auth: { auth: {
       getUser: async token => { calls.push(['verify', token]); return { data: { user: options.user ?? user }, error: options.invalidToken }; },
       signInWithPassword: async args => { calls.push(['reauth', args.email]); return { data: { user: { id: options.otherId ?? user.id }, session: { access_token: 'reauth-token' } }, error: options.wrongPassword }; },
@@ -36,7 +41,7 @@ test('reauth must identify the same user', async () => {
 });
 test('deletes only the verified owner, ignoring client-supplied target', async () => {
   const f=fixture(); const res=await handleDelete(request({confirmation:'DELETE',password:'secret',user_id:'victim',email:'victim@example.test'}),f.clients);
-  assert.equal(res.status,200); assert.deepEqual(f.calls,[['verify','valid'],['reauth',user.email],['revoke','reauth-token','global'],['delete',user.id,false]]);
+  assert.equal(res.status,200); assert.deepEqual(f.calls,[['verify','valid'],['reauth',user.email],['prepare',user.id],['revoke','reauth-token','global'],['cleanup',user.id],['delete',user.id,false]]);
 });
 test('failed session revocation prevents deletion', async () => {
   const f=fixture({revokeFailure:true}); assert.equal((await handleDelete(request(),f.clients)).status,503); assert.ok(!f.calls.some(x=>x[0]==='delete'));
@@ -51,4 +56,16 @@ test('malformed body does not create clients', async () => {
 test('unexpected service errors are redacted', async () => {
   const res=await handleDelete(request(),()=>{throw new Error('secret-service-role');});
   assert.equal(res.status,503); assert.ok(!(await res.text()).includes('secret-service-role'));
+});
+
+test('photo cleanup failure preserves the account and releases its deletion lease', async () => {
+  const f=fixture({cleanupFailure:true});
+  assert.equal((await handleDelete(request(),f.clients)).status,503);
+  assert.ok(!f.calls.some(x=>x[0]==='delete'));
+  assert.deepEqual(f.calls.at(-1),['restore',user.id,'lease']);
+});
+test('another deletion in progress cannot revoke or delete', async () => {
+  const f=fixture({lockFailure:true});
+  assert.equal((await handleDelete(request(),f.clients)).status,503);
+  assert.ok(!f.calls.some(x=>['revoke','cleanup','delete','restore'].includes(x[0])));
 });

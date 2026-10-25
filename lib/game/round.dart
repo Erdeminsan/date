@@ -1,85 +1,78 @@
-import 'dart:math';
+import 'engine.dart';
 
-/// UI-independent simulation. Fixed steps keep physics stable across devices.
+/// Read-only normalized coordinates for rendering the integer engine.
 class Gate {
-  Gate(this.x, this.center);
-  double x;
+  const Gate(this.x, this.center);
+  final double x;
   final double center;
-  bool scored = false;
 }
 
 class Round {
-  Round({this.seed = 42}) : random = Random(seed);
+  Round({this.seed = 42}) : engine = GameEngine(seed);
   final int seed;
-  final Random random;
+  final GameEngine engine;
   static const duration = 45.0;
   static const radius = 0.025;
   static const birdX = 0.24;
   static const gateWidth = 0.13;
   static const halfGap = 0.17;
-  final List<Gate> gates = [];
-  double elapsed = 0, y = 0.5, velocity = 0, cooldown = 0;
-  double spawnClock = 0, accumulator = 0;
-  int score = 0, hits = 0;
-  bool get finished => elapsed >= duration;
+  double _accumulator = 0;
+  bool _pendingFlap = false;
+  final List<int> _inputs = [];
+  List<int> get inputs => List.unmodifiable(_inputs);
+  Iterable<Gate> get gates => engine.gates.map((g) => Gate(g.x / 1000000, g.center / 1000000));
+  double get elapsed => engine.tick / 120;
+  double get y => engine.y / 1000000;
+  double get cooldown => engine.cooldown / 120;
+  int get score => engine.score;
+  int get hits => engine.hits;
+  bool get finished => engine.tick >= 5400;
+
   void flap() {
-    if (!finished && cooldown <= 0) velocity = -0.58;
+    if (!finished && engine.cooldown == 0) _pendingFlap = true;
   }
+  void clearPendingInput() => _pendingFlap = false;
 
   void advance(double dt) {
     if (finished || !dt.isFinite || dt <= 0) return;
-    accumulator += dt;
-    while (accumulator >= 1 / 120 && !finished) {
-      step(1 / 120);
-      accumulator -= 1 / 120;
+    // At most the remaining round can run, even after a very long frame.
+    _accumulator += dt > duration ? duration : dt;
+    const step = 1 / 120;
+    while (_accumulator + 1e-10 >= step && !finished) {
+      final flap = _pendingFlap;
+      _pendingFlap = false;
+      if (flap) _inputs.add(engine.tick);
+      engine.step(flap: flap);
+      _accumulator -= step;
+      if (_accumulator < 0) _accumulator = 0;
     }
   }
+}
 
-  void step(double dt) {
-    elapsed = min(duration, elapsed + dt);
-    spawnClock -= dt;
-    if (spawnClock <= 0) {
-      gates.add(Gate(1.1, 0.28 + random.nextDouble() * 0.44));
-      spawnClock += 1.65;
-    }
-    for (final gate in gates) {
-      gate.x -= 0.30 * dt;
-    }
-    gates.removeWhere((g) => g.x + gateWidth < 0);
-    if (cooldown > 0) {
-      cooldown = max(0, cooldown - dt);
-      for (final gate in gates) {
-        if (gate.x + gateWidth < birdX + radius) gate.scored = true;
+/// Local practice pauses explicitly. Network rooms must use server time instead.
+class PracticeSession {
+  PracticeSession({int seed = 42}) : round = Round(seed: seed);
+  final Round round;
+  double countdown = 3;
+  bool paused = false;
+  void flap() {
+    if (!paused && countdown <= 0) round.flap();
+  }
+  void pause() {
+    paused = true;
+    round.clearPendingInput();
+  }
+  void resume() => paused = false;
+  void advance(double dt) {
+    if (paused || !dt.isFinite || dt <= 0) return;
+    if (countdown > 0) {
+      if (dt < countdown) {
+        countdown -= dt;
+        return;
       }
-      return;
+      dt -= countdown;
+      countdown = 0;
     }
-    velocity += 1.35 * dt;
-    y += velocity * dt;
-    bool collision = y - radius <= 0 || y + radius >= 1;
-    for (final gate in gates) {
-      final overlaps =
-          birdX + radius > gate.x && birdX - radius < gate.x + gateWidth;
-      if (overlaps &&
-          (y - radius < gate.center - halfGap ||
-              y + radius > gate.center + halfGap))
-        collision = true;
-    }
-    if (collision) {
-      hits++;
-      y = 0.5;
-      velocity = 0;
-      cooldown = 0.85;
-      // Missed obstacles cannot score during respawn.
-      for (final gate in gates) {
-        if (gate.x < birdX + radius) gate.scored = true;
-      }
-      return;
-    }
-    for (final gate in gates) {
-      if (!gate.scored && gate.x + gateWidth < birdX - radius) {
-        gate.scored = true;
-        score++;
-      }
-    }
+    round.advance(dt);
   }
 }

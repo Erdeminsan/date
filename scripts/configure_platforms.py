@@ -16,6 +16,7 @@ def configure(root):
     if info.exists():
         data = plistlib.loads(info.read_bytes())
         data['CFBundleDisplayName'] = 'PlayMatch'
+        data['NSPhotoLibraryUsageDescription'] = 'Profil fotoğrafını seçebilmen için fotoğraf arşivine erişim kullanılır.'
         data['FlutterDeepLinkingEnabled'] = False
         data['UIRequiresFullScreen'] = True
         data['UISupportedInterfaceOrientations'] = ['UIInterfaceOrientationPortrait']

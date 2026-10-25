@@ -3,6 +3,7 @@ import '../backend/repository.dart';
 import '../demo_app.dart' show GameScreen;
 import 'profile_editor.dart';
 import 'account_settings.dart';
+import 'profile_photo.dart';
 
 class MemberHome extends StatefulWidget {
   const MemberHome({super.key, required this.backend});
@@ -302,6 +303,7 @@ class _MemberHomeState extends State<MemberHome> {
             for (final c in connections)
               Card(
                 child: ListTile(
+                  leading: ProfilePhoto(backend: widget.backend, path: c.photoPath),
                   title: Text(c.name),
                   subtitle: const Text(
                     'Eşleşme kaydedildi · Oyun daveti yakında',
@@ -376,7 +378,7 @@ class _MemberHomeState extends State<MemberHome> {
                   children: [
                     Row(
                       children: [
-                        const CircleAvatar(child: Icon(Icons.person_outline)),
+                        ProfilePhoto(backend: widget.backend, path: p.photoPath),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
