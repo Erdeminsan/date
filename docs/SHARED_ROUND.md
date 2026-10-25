@@ -50,3 +50,10 @@ kazanana şehir/ilgi alanı erişimi. Bu paket 1.0.0 tamamlandı anlamına gelme
 Geliştirme migration'ı: `20261025184644`. Mevcut oda RPC’sinin yetkileri korunur;
 public wrapper invoker, ayrıcalıklı işlem özel şemadadır. Ham oda yazma istemciye
 kapalıdır. Dağıtım sonrası kısmi indeks ve yeni alanlar ayrıca kontrol edildi.
+
+## Girdi gönderimi güncellemesi
+
+Yeni geliştirme paketi InputSender ile tamamlanmış bir saniyelik aralıkları
+sunucuya gönderir. Bitiş ekranı son paketin onayını bekler. Paketlerin kaydı
+sonuç doğrulandı anlamına gelmez; sonuç/ödül akışı henüz bağlı değildir.
+Ayrıntılar: [ROUND_VERIFICATION.md](ROUND_VERIFICATION.md).

@@ -5,6 +5,7 @@ import '../backend/repository.dart';
 import '../game/engine.dart';
 import '../game/flight_game.dart';
 import '../game/shared_round.dart';
+import '../game/input_sender.dart';
 
 class SharedGameScreen extends StatefulWidget {
   const SharedGameScreen({super.key, required this.backend, required this.connection,
@@ -20,7 +21,8 @@ class _SharedGameScreenState extends State<SharedGameScreen> with WidgetsBinding
   late final SharedRound round;
   late final FlightGame game;
   late final String owner;
-  Timer? timer;
+  Timer? timer, inputTimer;
+  late final InputSender sender;
   String? notice;
   bool stopped = false, checking = false;
   @override
@@ -29,17 +31,35 @@ class _SharedGameScreenState extends State<SharedGameScreen> with WidgetsBinding
     owner = widget.backend.userId;
     final room = widget.snapshot.room!;
     round = SharedRound(seed: room.seed!, startsAt: room.startsAt!, serverNow: widget.snapshot.serverNow, roundTrip: widget.roundTrip);
+    sender = InputSender((sequence, flaps) => widget.backend.submitGameInput(room.id, sequence, flaps, expectedUserId: owner));
     game = FlightGame(shared: round, onFinished: (score) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || stopped) return;
-        game.pauseEngine(); timer?.cancel();
-        setState(() { stopped = true; notice = 'Tur bitti. Yerel skorun: $score. Sunucu skor doğrulaması henüz bağlı değil; profil bilgisi açılmadı.'; });
+        game.pauseEngine();
+        setState(() { notice = 'Tur bitti. Girdiler sunucuya gönderiliyor…'; });
+        upload();
       });
     });
     WidgetsBinding.instance.addObserver(this);
+    inputTimer = Timer.periodic(const Duration(milliseconds: 250), (_) => upload());
     timer = Timer.periodic(const Duration(seconds: 2), (_) => check());
-    if (round.aborted || room.engineVersion != GameEngine.version) {
+    if (round.aborted || room.engineVersion != GameEngine.version || room.inputProtocol != InputSender.protocol) {
       WidgetsBinding.instance.addPostFrameCallback((_) => stop('Bu tura zamanında bağlanılamadı. Yeni davet gönder.'));
+    }
+  }
+  Future<void> upload() async {
+    if (stopped || !mounted) return;
+    if (round.aborted || widget.backend.userId != owner) {
+      await stop('Tur bağlantısı kesildi. Bilgi açılmadı.'); return;
+    }
+    await sender.pump(completedTick: round.round.engine.tick, inputs: round.round.inputs,
+      elapsedMs: round.estimatedNow.difference(widget.snapshot.room!.startsAt!).inMilliseconds);
+    if (!mounted || stopped) return;
+    if (sender.cancelled) {
+      await stop('Oyun girdileri zamanında iletilemedi. Tur iptal edildi.');
+    } else if (sender.complete) {
+      inputTimer?.cancel(); timer?.cancel();
+      setState(() { stopped = true; notice = 'Tur bitti. Yerel skorun: ${round.round.score}. Girdiler kaydedildi. Sunucu sonucu ve bilgi açılması henüz bağlı değil.'; });
     }
   }
   Future<void> check() async {
@@ -58,7 +78,7 @@ class _SharedGameScreenState extends State<SharedGameScreen> with WidgetsBinding
   }
   Future<void> stop(String text) async {
     if (!mounted || stopped) return;
-    round.cancel(); game.pauseEngine(); timer?.cancel();
+    round.cancel(); sender.cancel(); game.pauseEngine(); timer?.cancel(); inputTimer?.cancel();
     setState(() { stopped = true; notice = text; });
     try {
       if (widget.backend.userId == owner) await widget.backend.gameRoom(widget.connection.id, action: 'cancel', roomId: widget.snapshot.room!.id).timeout(const Duration(seconds: 4));
@@ -70,7 +90,7 @@ class _SharedGameScreenState extends State<SharedGameScreen> with WidgetsBinding
   }
   @override
   void dispose() {
-    timer?.cancel(); round.cancel(); game.pauseEngine();
+    timer?.cancel(); inputTimer?.cancel(); sender.cancel(); round.cancel(); game.pauseEngine();
     WidgetsBinding.instance.removeObserver(this); super.dispose();
   }
   @override

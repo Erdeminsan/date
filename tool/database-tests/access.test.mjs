@@ -1,6 +1,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFile, readdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import {verifyRound, INPUT_PROTOCOL} from '../../supabase/functions/_shared/round-verifier.mjs';
 
 // Local PostgreSQL engine; auth.users and auth.uid are compatibility fixtures.
 // This does not validate Supabase Auth email delivery or hosted configuration.
@@ -159,6 +160,85 @@ try {
     await db.query("update public.game_rooms set expires_at=now()-interval '1 second' where id=$1",[room.id]);
     await asUser('b'); assert.equal((await call('ready',room.id)).room.status,'expired');
     await asUser('a');
+  });
+  await check('game inputs require live participants, bounded ordered packets and immutable retries', async () => {
+    await asUser('a'); const match=(await scalar('select id from public.matches')).id;
+    const call=async(action,room=null)=>(await scalar('select public.game_room_action($1,$2,$3) as r',[match,action,room])).r;
+    const room=(await call('invite')).room.id;
+    const submit=async(sequence=0,flaps=[]) => (await scalar('select public.submit_game_input($1,$2,$3::integer[]) as r',[room,sequence,flaps])).r;
+    await assert.rejects(()=>submit(),/ROOM_UNAVAILABLE/);
+    await asUser('b'); await call('accept',room); await call('ready',room);
+    await asUser('a'); await call('ready',room);
+    await assert.rejects(()=>submit(),/INPUT_WINDOW/);
+    await db.exec('reset role');
+    await db.query("update public.game_rooms set starts_at=now()-interval '2 seconds',ends_at=now()+interval '43 seconds',expires_at=now()+interval '58 seconds' where id=$1",[room]);
+    await asUser('c'); await assert.rejects(()=>submit(),/ROOM_UNAVAILABLE/);
+    await asUser('a');
+    await assert.rejects(()=>submit(1),/INPUT_SEQUENCE/);
+    for(const flaps of [[-1],[120],[1,1],[2,1],[null],null,Array(121).fill(0)])
+      await assert.rejects(()=>submit(0,flaps),/INVALID_INPUT/);
+    for(const seq of [-1,45,null]) await assert.rejects(()=>submit(seq),/INVALID_INPUT/);
+    const first=await submit(0,[0,119]);
+    assert.deepEqual(await submit(0,[0,119]),first);
+    await assert.rejects(()=>submit(0,[1]),/INPUT_CONFLICT/);
+    assert.equal((await submit(1,[])).sequence,1);
+    await assert.rejects(()=>db.query('select * from app_private.game_input_packets'),/permission denied/);
+    await assert.rejects(()=>db.query('delete from app_private.game_input_packets'),/permission denied/);
+    await asUser('b'); assert.equal((await submit()).sequence,0);
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.game_input_packets where room_id=$1',[room])).n,3);
+    await db.query("update auth.users set banned_until=now()+interval '1 hour' where id=$1",[ids.b]);
+    await asUser('a'); await assert.rejects(()=>submit(0,[0,119]),/ROOM_UNAVAILABLE/);
+    await db.exec('reset role'); await db.query('update auth.users set banned_until=null where id=$1',[ids.b]);
+    await asUser('a'); await call('cancel',room);
+    await assert.rejects(()=>submit(0,[0,119]),/ROOM_UNAVAILABLE/);
+  });
+  await check('late input histories and unsupported protocols are refused', async () => {
+    await asUser('a'); const match=(await scalar('select id from public.matches')).id;
+    const call=async(action,room=null)=>(await scalar('select public.game_room_action($1,$2,$3) as r',[match,action,room])).r;
+    const room=(await call('invite')).room.id;
+    await asUser('b'); await call('accept',room); await call('ready',room);
+    await asUser('a'); await call('ready',room);
+    await db.exec('reset role');
+    await db.query("update public.game_rooms set starts_at=now()-interval '6 seconds',ends_at=now()+interval '39 seconds',expires_at=now()+interval '54 seconds' where id=$1",[room]);
+    await asUser('a'); await assert.rejects(()=>db.query('select public.submit_game_input($1,0,array[]::integer[])',[room]),/INPUT_WINDOW/);
+    await db.exec('reset role');
+    await db.query("update public.game_rooms set input_protocol='unknown' where id=$1",[room]);
+    await asUser('a'); await assert.rejects(()=>db.query('select public.submit_game_input($1,0,array[]::integer[])',[room]),/ROOM_UNAVAILABLE/);
+    await call('cancel',room);
+  });
+  await check('stored receipts feed the verifier; final retry is stable and expiry closes writes', async () => {
+    await asUser('a'); const match=(await scalar('select id from public.matches')).id;
+    const call=async(action,room=null)=>(await scalar('select public.game_room_action($1,$2,$3) as r',[match,action,room])).r;
+    const room=(await call('invite')).room.id;
+    await asUser('b'); await call('accept',room); await call('ready',room);
+    await asUser('a'); await call('ready',room);
+    await db.exec('reset role');
+    // Seed trusted prior receipts instead of waiting 45 wall-clock seconds.
+    await db.query("update public.game_rooms set status='awaiting_result',starts_at=now()-interval '45 seconds',ends_at=now(),expires_at=now()+interval '15 seconds' where id=$1",[room]);
+    await db.query(`insert into app_private.game_input_packets(room_id,player_id,sequence,flaps,received_at)
+      select r.id,p.id,n,array[]::integer[],r.starts_at+(n+1)*interval '1 second'
+      from public.game_rooms r cross join unnest($2::uuid[]) p(id) cross join generate_series(0,43) n where r.id=$1`,[room,[ids.a,ids.b]]);
+    const submit=async()=>(await scalar('select public.submit_game_input($1,44,array[]::integer[]) as r',[room])).r;
+    const completed=[];
+    for(const player of ['a','b']) {
+      await asUser(player); const ack=await submit(); completed.push(ack);
+      assert.deepEqual(await submit(),ack);
+    }
+    await db.exec('reset role');
+    const r=await scalar(`select *,floor(extract(epoch from starts_at)*1000)::float8 as start_ms,
+      floor(extract(epoch from ends_at)*1000)::float8 as end_ms,
+      floor(extract(epoch from clock_timestamp())*1000)::float8 as now_ms from public.game_rooms where id=$1`,[room]);
+    const packets=(await db.query(`select *,floor(extract(epoch from received_at)*1000)::float8 as received_ms
+      from app_private.game_input_packets where room_id=$1 order by sequence`,[room])).rows;
+    const result=verifyRound({room:{id:room,players:[ids.a,ids.b],status:r.status,seed:Number(r.seed),
+      engineVersion:r.engine_version,inputProtocol:r.input_protocol,startsAtMs:r.start_ms,endsAtMs:r.end_ms},nowMs:r.now_ms,
+      streams:[ids.a,ids.b].map(playerId=>({roomId:room,playerId,packets:packets.filter(p=>p.player_id===playerId).map(p=>({
+        sequence:p.sequence,fromTick:p.sequence*120,throughTick:(p.sequence+1)*120,flaps:p.flaps,receivedAtMs:p.received_ms}))}))});
+    assert.equal(r.input_protocol,INPUT_PROTOCOL); assert.equal(packets.length,90); assert.equal(result.winnerId,null);
+    await db.query("update public.game_rooms set expires_at=now()-interval '1 second' where id=$1",[room]);
+    await asUser('a'); await assert.rejects(()=>submit(),/ROOM_UNAVAILABLE/);
+    await call('read',room);
   });
   await check('messaging enforces membership, stable retry, cursor pages and durable limits', async () => {
     await asUser('a'); const match=(await scalar('select id from public.matches')).id;
@@ -418,6 +498,7 @@ try {
     await assert.rejects(() => db.exec('select * from public.discover_page()'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.matches_page()'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.game_rooms'), /permission denied/);
+    await assert.rejects(() => db.query('select public.submit_game_input($1,0,array[]::integer[])',[ids.a]), /permission denied/);
     await assert.rejects(() => db.query('select public.messages_page($1)',[ids.a]), /permission denied/);
     await assert.rejects(() => db.query("select public.send_message($1,$2,'Hello')",[ids.a,ids.b]), /permission denied/);
     await assert.rejects(() => db.query('select public.unmatch($1)',[ids.a]), /permission denied/);
@@ -439,6 +520,7 @@ try {
     for (const table of ['likes','matches','blocks','reports','game_rooms','messages']) {
       assert.equal((await db.query(`select * from public.${table}`)).rows.length,0);
     }
+    assert.equal((await db.query('select * from app_private.game_input_packets')).rows.length,0);
     assert.equal((await db.query('select * from public.profiles')).rows.length,1);
     assert.equal((await db.query('select * from public.profile_details')).rows.length,1);
     await asUser('b');

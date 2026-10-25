@@ -57,9 +57,11 @@ class GameRoom {
   GameRoom(Map<String, dynamic> data)
     : id = data['id'] as String, inviterId = data['inviter_id'] as String,
       status = data['status'] as String, expiresAt = DateTime.parse(data['expires_at'] as String),
+      inputProtocol = data['input_protocol'] as String?,
       engineVersion = data['engine_version'] as String? ?? 'sky-hop-v1', seed = data['seed'] as int?,
       startsAt = data['starts_at'] == null ? null : DateTime.parse(data['starts_at'] as String);
   final String engineVersion;
+  final String? inputProtocol;
   final int? seed;
   final DateTime? startsAt;
   final String id, inviterId, status;
@@ -195,6 +197,14 @@ class Backend {
       'p_match': matchId, 'p_action': action, 'p_room': roomId,
     });
     return RoomSnapshot(Map<String, dynamic>.from(data as Map));
+  }
+
+  Future<void> submitGameInput(String roomId, int sequence, List<int> flaps, {required String expectedUserId}) async {
+    if (userId != expectedUserId) throw const AuthException('Session changed');
+    final data = await client.rpc('submit_game_input', params: {
+      'p_room': roomId, 'p_sequence': sequence, 'p_flaps': flaps,
+    });
+    if (userId != expectedUserId || data['sequence'] != sequence) throw StateError('Input acknowledgement mismatch');
   }
 
   Future<MessagePage> messages(String matchId, {String? before, String? after}) async {

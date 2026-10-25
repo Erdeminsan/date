@@ -11,10 +11,10 @@
 | Üyelik | Kayıt, doğrulama, giriş/çıkış, sıfırlama, hesap silme; gerçek cihazda soğuk/sıcak başlangıç | Kod var; gerçek e-posta/cihaz kabulü eksik |
 | Profil | 18+ profil, düzenleme, fotoğraf, görünürlük ve keşfet tercihleri | Metin profili ve özel fotoğraf akışı main içinde; gerçek cihaz kabulü ve tercihler eksik |
 | Keşfet | Tercihlere uygun, engelli/yasaklı hesapları dışlayan, devamı yüklenebilen liste | 20 kayıtlık sayfalama var; tercihler eksik |
-| Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni ve sayfalama var; ayrılma geliştirme dalında; otomatik güncelleme eksik |
-| Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Davet ve bekleme odası main içinde; hazır olma ve ortak zamanlı tur geliştirme dalında; sunucu sonucu/kopuş kabulü eksik |
+| Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni ve sayfalama var; ayrılma main içinde; otomatik güncelleme eksik |
+| Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Davet ve bekleme odası main içinde; hazır olma ve ortak zamanlı tur main içinde; sunucu sonucu/kopuş kabulü eksik |
 | Sonuç ve bilgi açılması | Sunucunun doğruladığı sonuç; aynı sonucu tekrar göndermek güvenli; yalnızca ilgili eşleşmeye erişim | Offline replay motoru var; canlı sonuç kabulü ve bilgi açılması yok |
-| Mesajlaşma | Yalnızca izinli eşleşmeler; kalıcı mesajlar, sayfalama, otomatik güncelleme, gönderim hatası/tekrar; engel/yasak kontrolü | Metin sohbeti geliştirme dalında; 3 sn polling, güvenli retry ve erişim kontrolleri var; gerçek cihaz kabulü eksik |
+| Mesajlaşma | Yalnızca izinli eşleşmeler; kalıcı mesajlar, sayfalama, otomatik güncelleme, gönderim hatası/tekrar; engel/yasak kontrolü | Metin sohbeti main içinde; 3 sn polling, güvenli retry ve erişim kontrolleri var; gerçek cihaz kabulü eksik |
 | Güvenlik/moderasyon | Şikâyet inceleme ve yaptırım, denetim kaydı, silme/saklama politikası, kötüye kullanım sınırları | Engelle/şikâyet kaydı var; yönetim akışı eksik |
 | Kullanıcı bilgilendirmesi | Gerçek destek ve gizlilik bağlantıları, kullanım koşulları, veri kullanımı ve hesap silme açıklaması | İşletmeci bilgileri/metinler eksik |
 | Yayın | Otomatik testler, iki gerçek hesap, fiziksel iPhone, ağ kopması, imzalı arşiv ve TestFlight kurulumu | CI geçti; cihaz/imza/kabul eksik |
@@ -104,3 +104,12 @@ kontrol etmelidir. Şu an bu tablolar henüz yoktur.
 Kalıcı sohbet paketi: [MESSAGING.md](MESSAGING.md).
 
 Ortak tur başlangıcı: [SHARED_ROUND.md](SHARED_ROUND.md).
+
+## PR #12 sonrası durum
+
+Ortak başlangıç, kalıcı mesajlaşma ve eşleşmeden ayrılma main içinde.
+PR #12 başlığı d5cb912 üzerinde 122 kontrol ve Xcode 26 imzasız iOS derlemesi
+başarılı. Yukarıdaki PR #8 değerlendirmesi tarihsel kayıttır.
+Sıradaki iş canlı girdi kaydı ve sonuç/ödül işlemidir. Doğrulama çekirdeği
+[ROUND_VERIFICATION.md](ROUND_VERIFICATION.md) içinde tanımlanmıştır;
+çekirdek testi canlı yetkilendirme veya ödül işleminin tamamlandığı anlamına gelmez.
