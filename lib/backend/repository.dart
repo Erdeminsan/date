@@ -172,6 +172,10 @@ class Backend {
     return RoomSnapshot(Map<String, dynamic>.from(data as Map));
   }
 
+  Future<void> unmatch(String matchId) async {
+    await client.rpc('unmatch', params: {'p_match': matchId});
+  }
+
   Future<void> block(String id) async {
     await client.rpc('block_profile', params: {'p_target': id});
   }

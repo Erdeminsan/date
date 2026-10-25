@@ -176,19 +176,37 @@ class _MemberHomeState extends State<MemberHome> {
       });
   }
 
-  Widget menu(String id) => PopupMenuButton<String>(
+  Future<void> unmatch(Connection connection) async {
+    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+      title: Text('${connection.name} ile eşleşmeden ayrıl?'),
+      content: const Text('Eşleşme, karşılıklı beğeniler ve oyun davetleri silinir. Yeniden eşleşmek için ikinizin de tekrar beğenmesi gerekir. Birbirinizi keşfette görebilirsiniz; bunu istemiyorsan Engelle seçeneğini kullan.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Vazgeç')),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Eşleşmeden ayrıl')),
+      ],
+    ));
+    if (confirmed == true && mounted) await act(() async {
+      await widget.backend.unmatch(connection.id);
+      notify('Eşleşme kaldırıldı.');
+    });
+  }
+
+  Widget menu(String id, {Connection? connection}) => PopupMenuButton<String>(
     enabled: !acting,
     onSelected: (v) {
       if (v == 'block') {
         block(id);
+      } else if (v == 'unmatch' && connection != null) {
+        unmatch(connection);
       } else {
         report(id);
       }
     },
     itemBuilder:
-        (_) => const [
-          PopupMenuItem(value: 'block', child: Text('Engelle')),
-          PopupMenuItem(value: 'report', child: Text('Şikâyet et')),
+        (_) => [
+          if (connection != null) const PopupMenuItem(value: 'unmatch', child: Text('Eşleşmeden ayrıl')),
+          const PopupMenuItem(value: 'block', child: Text('Engelle')),
+          const PopupMenuItem(value: 'report', child: Text('Şikâyet et')),
         ],
   );
   @override
@@ -312,7 +330,7 @@ class _MemberHomeState extends State<MemberHome> {
                   subtitle: const Text(
                     'Oyun davetini aç',
                   ),
-                  trailing: menu(c.otherId),
+                  trailing: menu(c.otherId, connection: c),
                 ),
               ),
             pageFooter(true),

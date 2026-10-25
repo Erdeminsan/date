@@ -132,6 +132,30 @@ try {
     await db.exec('reset role'); await db.query('delete from app_private.game_invite_events where user_id=$1',[ids.a]);
     await asUser('a');
   });
+  await check('unmatching removes the pair and rooms, preserves quotas and ignores stale IDs', async () => {
+    await asUser('a'); const match=(await scalar('select id from public.matches')).id;
+    const room=(await scalar("select public.game_room_action($1,'invite') as r",[match])).r.room.id;
+    await db.exec('reset role');
+    const budget=(await scalar('select count(*)::int as n from app_private.like_events where actor_id=$1',[ids.a])).n;
+    const invites=(await scalar('select count(*)::int as n from app_private.game_invite_events where user_id=$1',[ids.a])).n;
+    await asUser('c'); await db.query('select public.unmatch($1)',[match]);
+    await asUser('a'); assert.equal((await db.query('select id from public.matches')).rows.length,1);
+    await db.query('select public.unmatch($1)',[match]);
+    assert.equal((await db.query('select id from public.matches')).rows.length,0);
+    assert.equal((await db.query('select id from public.game_rooms')).rows.length,0);
+    assert.equal((await db.query('select * from public.likes')).rows.length,0);
+    await assert.rejects(()=>db.query("select public.game_room_action($1,'accept',$2)",[match,room]),/ROOM_UNAVAILABLE/);
+    await db.query('select public.unmatch($1)',[match]);
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.like_events where actor_id=$1',[ids.a])).n,budget);
+    assert.equal((await scalar('select count(*)::int as n from app_private.game_invite_events where user_id=$1',[ids.a])).n,invites);
+    await asUser('a'); assert.equal((await scalar('select public.like_profile($1) as id',[ids.b])).id,null);
+    await asUser('b'); const fresh=(await scalar('select public.like_profile($1) as id',[ids.a])).id;
+    assert.notEqual(fresh,match);
+    await asUser('a'); await db.query('select public.unmatch($1)',[match]);
+    assert.equal((await scalar('select id from public.matches')).id,fresh);
+    assert.equal((await db.query('select * from public.likes')).rows.length,1);
+  });
   await check('blocking removes match and prevents future likes', async () => {
     await asUser('a'); await db.query('select public.block_profile($1)',[ids.b]);
     assert.equal((await db.query('select * from public.game_rooms')).rows.length,0);
@@ -319,6 +343,7 @@ try {
     await assert.rejects(() => db.exec('select * from public.discover_page()'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.matches_page()'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.game_rooms'), /permission denied/);
+    await assert.rejects(() => db.query('select public.unmatch($1)',[ids.a]), /permission denied/);
     await assert.rejects(() => db.query("select public.game_room_action($1,'read')",[ids.a]), /permission denied/);
     await assert.rejects(() => db.query('select public.like_profile($1)',[ids.a]), /permission denied/);
     await assert.rejects(() => db.query('select public.blocked_profiles()'), /permission denied/);
