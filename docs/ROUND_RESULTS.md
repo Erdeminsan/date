@@ -41,8 +41,8 @@ Son girdi onaylanınca sonuç ekranı açılır. Diğer oyuncu veya tur bitişi
 bekleniyorsa iki saniyede bir yeniden denenir; tamamlanınca artık salt okunur
 RPC ile erişim kontrolü sürer. Erişim kaybında gösterilen bilgiler temizlenir.
 Yanıt kaybı kesin başarısızlık sayılmaz; yeniden deneme aynı sonucu getirir.
-Lobide tamamlanmış son turun sonucu tekrar açılabilir. Yeni davet açıldıktan
-sonra geçmiş sonuçlar/alanlar için ayrı profil-geçmiş ekranı henüz yoktur.
+Lobide tamamlanmış son turun sonucu tekrar açılabilir. Açılan alanlar sohbet ve eşleşme menüsündeki Açılan bilgiler ekranından yeni
+davetlerden bağımsız okunabilir. Geçmiş turların listesi henüz yoktur.
 
 Sonuç yalnız tur bitişinden sonraki 15 saniyede ilk kez yazılır. İki uygulama
 da bu pencere boyunca kapanırsa tam girdiler olsa dahi otomatik arka plan
@@ -52,3 +52,17 @@ ve iptal galibiyet sayılmaz. Bu davranış cihaz kabulünde doğrulanmalıdır.
 Bot tespiti yoktur; replay fiziksel olarak mümkün sonucu doğrular. Genel
 Edge HTTP rate limit ve uzun dönem sonuç/girdi saklama politikası henüz ürün
 moderasyon/operasyon paketinin açık işleridir.
+
+## Eşleşme bilgileri ekranı
+
+20261025193350_match_unlocks migration’ı geliştirme ortamında uygulandı.
+match_unlocks yalnız çağıranın aktif eşleşmesini kabul eder; çift kilidi altında
+kimlik, hesap ve engel kontrolünü tekrarlar. Kazanılan alanlar aynı tekil sonuç
+kayıtlarından hesaplanır. Yeni oda/davet erişimi sıfırlamaz; yeni bir eşleşme
+sıfırdan başlar. API yalnız unlock_level, city, interests döndürür.
+
+Ekran üç saniyede bir erişimi yeniler; hata veya hesap değişiminde alanları
+siler. Arka plana geçişte alanlar hemen temizlenir, geç gelen eski yanıtın
+bunları geri koyması generation kontrolüyle engellenir. Sonuçlar diskte tutulmaz.
+Çevrimdışı erişim yoktur. Fiziksel cihazda ekran geçişi ve erişim iptali kabulü
+henüz yapılmadı.

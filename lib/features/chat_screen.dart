@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../backend/repository.dart';
 import 'game_lobby.dart';
+import 'match_details_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.backend, required this.connection});
@@ -90,6 +91,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final ordered = messages.values.toList()..sort((a,b) => BigInt.parse(b.id).compareTo(BigInt.parse(a.id)));
     return Scaffold(
       appBar: AppBar(title: Text(widget.connection.name), actions: [
+        IconButton(tooltip: 'Açılan bilgiler', icon: const Icon(Icons.person_outline),
+          onPressed: () => Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => MatchDetailsScreen(backend: widget.backend, connection: widget.connection)))),
         IconButton(tooltip: 'Oyun daveti', icon: const Icon(Icons.sports_esports_outlined),
           onPressed: () => Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => GameLobby(backend: widget.backend, connection: widget.connection)))),
         IconButton(tooltip: 'Sohbeti yenile', onPressed: reading ? null : () => read(), icon: const Icon(Icons.refresh)),
