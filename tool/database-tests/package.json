@@ -1,0 +1,7 @@
+{
+  "name": "playmatch-database-contract-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {"test": "node access.test.mjs"},
+  "devDependencies": {"@electric-sql/pglite": "0.3.14"}
+}

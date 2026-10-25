@@ -14,4 +14,4 @@ flutter pub get
 dart format lib test
 flutter analyze
 flutter test
-echo 'Kaynak kontrolleri tamamlandı. flutter run ile cihazda deneyin.'
+echo 'Kaynak kontrolleri tamamlandı. flutter run --dart-define-from-file=config/development.json ile başlatın.'

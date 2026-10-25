@@ -1,115 +1,81 @@
-# PlayMatch — 0.1.0 kaynak kod prototipi
+# PlayMatch
 
-Geçici isim: PlayMatch. Flutter uygulaması + Flame ile çizilen özgün Sky Hop oyunu.
+Flutter + Flame ile oyun üzerinden tanışma uygulaması. Geçici ürün adı PlayMatch.
 
-## Bu paketin kapsamı
+## 0.2 — Supabase temeli
 
-Çevrimdışı demo: isim/18+ onayı, üç kurgusal profil, demo beğeni/eşleşme,
-45 saniyelik oynanabilir oyun, skor sonucu, şehir/ilgi alanı/sohbet kilitleri,
-yalnızca ekranda kalan mesaj önizlemesi ve demo verilerini sıfırlama.
-Fotoğraf ve diğer harici varlıklara ihtiyaç duymaz. İnternet bağlantısı kullanmaz.
-Her uygulama yeniden açılışında bilgiler sıfırlanır. Gerçek hesap oluşturulmaz.
+Gerçek e-posta/şifre oturumu, profil oluşturma/düzenleme, keşfet, karşılıklı
+beğeniyle eşleşme, görünürlük, engelleme ve şikâyet kodu eklendi.
+Şehir/doğum tarihi/ilgi alanları sadece sahibine açıktır. Oyun şu an antrenmandır;
+gerçek profil bilgisi açmaz. Önceki çevrimdışı demo ayrı modda korunur.
 
-Gerçek multiplayer, sunucu, giriş sistemi, fotoğraf yükleme, karşılıklı gerçek
-beğeni, kalıcı mesajlaşma, bildirim, moderasyon ve hesap silme henüz uygulanmadı.
-Bu sürüm bitmiş dating uygulaması olarak veya gerçek kullanıcılarla eşleşiyor
-şeklinde sunulmamalıdır. TestFlight'a yüklenmiş değildir.
+**Durum:** Supabase projesi mevcut; migration uygulama isteği reddedildiği için
+canlı şema henüz kurulmadı. Yeni Flutter testleri çalıştırılmadı. Bu dal geliştirme
+incelemesi içindir, hazır bir üretim veya TestFlight sürümü değildir.
 
-## Mac'te ilk çalıştırma
-
-Flutter stable SDK ve Xcode gereklidir. Xcode ilk kurulumunu ve iOS platform
-bileşenlerini tamamlayın. Flutter SDK'nın Dart sürümü en az 3.5 olmalıdır;
-bağımlılık çözümlemesi daha yeni Flutter isterse stable sürümü güncelleyin.
+## Başlatma
 
 ```bash
 git clone https://github.com/Erdeminsan/date.git
 cd date
-flutter doctor -v
+git switch feature/supabase-foundation
 bash scripts/setup.sh
-flutter devices
-flutter run
+flutter run --dart-define-from-file=config/development.json
 ```
 
-Kurulum betiği yerel Flutter sürümünüzle iOS/Android platform projelerini üretir;
-lib, test ve pubspec dosyalarını korur. ios klasörü varsa platform üretimini atlar.
-Ardından bağımlılıkları indirir, formatlama, analiz ve testleri çalıştırır.
-Oluşan pubspec.lock dosyasını projenin devamında saklayın/versiyonlayın.
+Önce [Supabase kurulumunu](docs/SUPABASE_SETUP.md) tamamlayın. Hesap onayı için
+SMTP/URL ayarları gerekir. İkinci bir gerçek hesap olmadan keşfet boş görünür.
 
-## TestFlight için sonraki adım
-
-Önce fiziksel iPhone'da tüm demo akışını deneyin. Bu ortamda Flutter/Xcode
-bulunmadığından kod derlenmedi; eklenen testler burada çalıştırılamadı.
-Kullanıcının Mac ortamında analiz ve 5 testin tamamının geçtiği doğrulandı (25 Ekim 2026); ekran testi telefon boyutu ve kaydırma için düzeltildi. Bu çalışma ortamında testler yeniden çalıştırılamadı. İmzalı iOS derlemesi ve TestFlight yüklemesi henüz doğrulanmadı.
+Çevrimdışı demo:
 
 ```bash
-open ios/Runner.xcworkspace
+flutter run --dart-define=DEMO_MODE=true
 ```
 
-Runner > Signing & Capabilities: kendi Apple Developer Team'inizi seçin.
-Bundle Identifier için `com.erdeminsan.playmatch` geçici öneridir; hesabınızda
-kullanılabilirliğini kontrol edin ve gerekirse değiştirin. Display Name: PlayMatch.
-Otomatik imzalamayı açın. Uygulamayı iPhone'da deneyin. Üretilen varsayılan
-Flutter ikonlarını dağıtımdan önce özgün uygulama ikonu ile değiştirin.
-App Store Connect'te aynı Bundle ID ile uygulama kaydı oluşturun.
+## Kaynaklar
+
+- `lib/main.dart`: Supabase başlatma, oturum ve gerçek uygulama.
+- `lib/backend/`: veri erişimi ve doğrulama.
+- `lib/features/`: giriş, profil, keşfet/eşleşmeler.
+- `lib/demo_app.dart`: önceki çevrimdışı demo.
+- `lib/game/`: 45 saniyelik Sky Hop antrenmanı.
+- `supabase/migrations/`: kontrollü RPC'ler, tablolar ve RLS.
+- `tool/database-tests/`: yerel PostgreSQL erişim kontrolleri.
+- `test/`: oyun, demo, auth formu ve model testleri.
+
+## Doğrulama
+
+Dart format/sözdizimi ve `git diff --check` geçti. Yerel veritabanında 16 erişim
+ve iş kuralı kontrolü geçti. Yeni Flutter analiz/widget testleri ve canlı Supabase
+kabul testleri henüz çalıştırılmadı. Önceki 0.1 demoda 5 test kullanıcı Mac'inde geçmişti.
 
 ```bash
-flutter build ipa --release --build-name=0.1.0 --build-number=1
+flutter analyze
+flutter test
+cd tool/database-tests
+npm ci --ignore-scripts
+npm test
 ```
 
-Arşiv: build/ios/archive/. IPA: build/ios/ipa/.
-Arşivi Xcode ile açıp Validate App, ardından Distribute App > App Store Connect
-adımlarını uygulayın veya IPA'yı Apple Transporter ile yükleyin.
-TestFlight'ta build işleme tamamlandıktan sonra gerekli ihracat uyumluluğu
-sorularını uygulamanın gerçek içeriğine göre yanıtlayın ve dahili test grubunu seçin.
-Her yeni yüklemede build numarasını artırın. Harici test Apple beta incelemesine
-tabidir; aynı gün onay garantisi yoktur.
+## Geliştirme
 
-Test notu önerisi: “Çevrimdışı PlayMatch prototipi. Tüm profiller kurgusaldır.
-Keşfet → demo eşleşmesi → Sky Hop → bilgi açma akışını test edin.
-Mesajlaşma yerel önizlemedir. Gerçek kullanıcı veya sunucu bağlantısı yoktur.”
+Özellik dalları ve PR üzerinden ilerlenir. `pubspec.lock` başarılı ilk bağımlılık
+çözümlemesinden sonra repoya eklenmelidir; henüz üretilmedi.
+Publishable Supabase anahtarı istemci konfigürasyonudur; servis anahtarı ve Apple
+imzalama sırları repoya girmez. Platform projelerini `scripts/setup.sh` üretir.
 
-## Oyun kuralları
+## Yol haritası
 
-3 saniyelik geri sayım; ardından 45 saniye. Dokunmak yükseltir, yerçekimi düşürür.
-Engeli geçmek 1 puandır. Çarpma 0.85 saniye beklemeyle yeniden başlatır;
-tur saati devam eder. Uygulama arka plana gidince durur ve dönüşte Devam et gerekir.
-Demo rakip yerine sabit 3 puanlık hedef kullanılır; bu gerçek rakip skoru değildir.
-3+ puan bir bilgi seviyesi açar. Seviye 1 şehir, 2 ilgi alanları, 3 sohbet önizlemesi.
-Fizik 120 Hz sabit adımlı; engel dizisi seed ile üretilir. Gerçek multiplayer için
-sunucu başlangıç zamanı, seed, bağlantı kopma kuralı ve sunucu skor doğrulaması gerekir.
-İstemci skoruna güvenerek gerçek profil verisi açılmamalıdır.
+- [x] Yerel demo, oyun ve testleri
+- [x] Supabase hesabı/projesi
+- [x] Auth/profil/eşleşme Flutter kodu ve RLS migration
+- [ ] Migration'ı canlı projeye uygula; advisors ve iki hesap testi
+- [ ] Flutter analiz/test ve lockfile doğrulaması
+- [ ] Fotoğraf, oyun odaları, senkron tur, sunucuda skor doğrulama
+- [ ] Bilgi açma, mesajlaşma, Realtime
+- [ ] Şifre sıfırlama, hesap silme, moderasyon ve gizlilik
+- [ ] Fiziksel iPhone, imzalı arşiv ve TestFlight
 
-## Kaynak düzeni
-
-- lib/main.dart: uygulama ekranları ve geçici demo durumu.
-- lib/game/round.dart: ekrandan bağımsız fizik ve skor kuralları.
-- lib/game/flight_game.dart: Flame çizimi ve oyun döngüsü.
-- test/: tur, deterministik adımlar, çarpışma, skor ve ekran akışı testleri.
-- scripts/setup.sh: yerel platform oluşturma ve doğrulama.
-
-## Gerçek beta için kalan işler
-
-Backend seçimi ve proje kurulumu; kimlik doğrulama; sunucuda yaş/erişim kontrolü;
-profil ve görsel depolama; kullanıcı bazında veri izinleri; karşılıklı beğeni;
-oyun odaları ve aynı başlangıç zamanı; doğrulanan skor sonucu ve atomik bilgi açma;
-gerçek mesajlaşma; engelleme/şikâyet ve moderasyon; gizlilik metni ve hesap silme.
-18+ kutusu tek başına yaş doğrulama sistemi değildir. Kilitli profil verileri
-sunucudan yetkisiz istemciye gönderilmemelidir.
-
-## Resmi kaynaklar
-
-https://docs.flutter.dev/deployment/ios
-https://docs.flame-engine.org/latest/flame/game_widget.html
-https://developer.apple.com/help/app-store-connect/test-a-beta-version/testflight-overview/
-
-## Backend durumu
-
-Atideis organizasyonunda Frankfurt bölgesinde PlayMatch Supabase projesi oluşturuldu.
-Bu commit henüz Supabase entegrasyonu içermez; uygulama çevrimdışı demodur.
-API anahtarları veya Apple imzalama bilgileri bu repoya eklenmemelidir.
-
-## Geliştirme akışı
-
-Yeni özellikler için `feature/` önekli dal açın; analiz ve testleri çalıştırıp PR üzerinden birleştirin.
-Mac üzerinde oluşturulan platform projeleri ve pubspec.lock henüz bu kaynak paketinde yoktur.
-`scripts/setup.sh` ile üretildikten sonra imzalama sırları hariç ilgili dosyalar versiyonlanmalıdır.
+Resmi referanslar: [Flutter iOS](https://docs.flutter.dev/deployment/ios),
+[Supabase Flutter](https://supabase.com/docs/reference/dart/introduction),
+[Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security).

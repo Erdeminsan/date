@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playmatch/game/round.dart';
+
 void main() {
   test('Round ends once, at 45 seconds', () {
     final r = Round();
@@ -13,9 +14,13 @@ void main() {
   test('Identical input at different frame rates gives same outcome', () {
     final a = Round(seed: 12), b = Round(seed: 12);
     for (var i = 0; i < 600; i++) {
-      if (i % 12 == 0) { a.flap(); b.flap(); }
+      if (i % 12 == 0) {
+        a.flap();
+        b.flap();
+      }
       a.advance(1 / 30);
-      b.advance(1 / 60); b.advance(1 / 60);
+      b.advance(1 / 60);
+      b.advance(1 / 60);
     }
     expect(a.score, b.score);
     expect(a.hits, b.hits);
