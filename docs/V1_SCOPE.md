@@ -9,11 +9,11 @@
 | Alan | 1.0.0 kabulü | Mevcut durum |
 | --- | --- | --- |
 | Üyelik | Kayıt, doğrulama, giriş/çıkış, sıfırlama, hesap silme; gerçek cihazda soğuk/sıcak başlangıç | Kod var; gerçek e-posta/cihaz kabulü eksik |
-| Profil | 18+ profil, düzenleme, fotoğraf, görünürlük ve keşfet tercihleri | Metin profili var; fotoğraf geliştirme dalında, gerçek cihaz kabulü ve tercihler eksik |
+| Profil | 18+ profil, düzenleme, fotoğraf, görünürlük ve keşfet tercihleri | Metin profili ve özel fotoğraf akışı main içinde; gerçek cihaz kabulü ve tercihler eksik |
 | Keşfet | Tercihlere uygun, engelli/yasaklı hesapları dışlayan, devamı yüklenebilen liste | 20 kayıtlık sayfalama var; tercihler eksik |
 | Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni ve sayfalama var; ayrılma/otomatik güncelleme eksik |
-| Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Yok; mevcut oyun tek kişilik antrenman |
-| Sonuç ve bilgi açılması | Sunucunun doğruladığı sonuç; aynı sonucu tekrar göndermek güvenli; yalnızca ilgili eşleşmeye erişim | Yok |
+| Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Dart/JS ortak motor ve antrenman main içinde; davet/oda/ortak tur yok |
+| Sonuç ve bilgi açılması | Sunucunun doğruladığı sonuç; aynı sonucu tekrar göndermek güvenli; yalnızca ilgili eşleşmeye erişim | Offline replay motoru var; canlı sonuç kabulü ve bilgi açılması yok |
 | Mesajlaşma | Yalnızca izinli eşleşmeler; kalıcı mesajlar, sayfalama, otomatik güncelleme, gönderim hatası/tekrar; engel/yasak kontrolü | Yok |
 | Güvenlik/moderasyon | Şikâyet inceleme ve yaptırım, denetim kaydı, silme/saklama politikası, kötüye kullanım sınırları | Engelle/şikâyet kaydı var; yönetim akışı eksik |
 | Kullanıcı bilgilendirmesi | Gerçek destek ve gizlilik bağlantıları, kullanım koşulları, veri kullanımı ve hesap silme açıklaması | İşletmeci bilgileri/metinler eksik |
@@ -53,3 +53,36 @@ Geçmişte silinmiş beğeni olayları geri üretilemez. Migration, halen kayıt
 24 saatlik beğenileri aktarır; tam günlük muhasebe dağıtımdan itibaren oluşur.
 
 Oyun tasarımı, onaylanan ödül kuralı ve açık kararlar: [GAME_PLAN.md](GAME_PLAN.md).
+
+## 25 Ekim 2026 main değerlendirmesi
+
+PR #8 ile fotoğraf, ortak fizik motoru ve antrenman entegrasyonu ana dala geldi.
+Tüm uzak özellik/düzeltme dallarının geçmişi main altında toplandı. Eski dal
+isimlerinin kalması kodun dışarıda olduğu anlamına gelmez; dallar silinmedi.
+Sürüm hâlâ 0.3.0+3; 1.0.0 veya TestFlight dağıtımı yapılmış değildir.
+
+Son kod doğrulaması: PR #8, 6ecdf2e, Actions 40218069199. Flutter analizi,
+43 Flutter + 19 JS motor + 25 DB + 15 Edge + 2 platform testi (104 toplam)
+ve Xcode 26 imzasız iOS release derlemesi başarılı. Bu durum değerlendirmesi
+ve geçmiş birleştirmesi çalışma kodunu değiştirmiyor.
+
+### Kalan işlerin önceliği
+
+1. Ortak oyun: davet/kabul/ret/iptal, katılımcı yetkileri, tek aktif oda,
+   hazır olma, sunucu başlangıç saati, süre aşımı ve kopuş yönetimi.
+2. Canlı skor doğrulama: sıralı giriş paketleri, zaman pencereleri,
+   sürüm kontrolü, sunucu replay ve tek seferlik sonuç kaydı.
+3. Kazanan ödülü: ilk galibiyette şehir, ikinci galibiyette ilgi alanları;
+   eşitlik/yarım tur ödülsüz; erişim yalnızca ilgili eşleşmeye ait.
+4. Ürün akışları: keşfet tercihleri, eşleşmeden ayrılma, otomatik güncellemeler,
+   kalıcı mesajlaşma. Demo sohbeti yalnızca bellekte; gerçek mesajlaşma değildir.
+   Sohbetin eşleşmede mi ilk turdan sonra mı açılacağı kararlaştırılmalı.
+5. Moderasyon: şikâyet inceleme, yaptırım, denetim kayıtları, fotoğraf içerik
+   kontrolü ve saklama/silme süreçleri.
+6. Yayın kabulü: gerçek e-posta/SMTP ve yönlendirmeler, iki hesaplı fiziksel
+   iPhone testleri, canlı fotoğraf ve hesap silme, gizlilik/destek/işletmeci
+   metinleri, imzalı arşiv ve TestFlight kurulumu. Android galeri süreç kaybı
+   kurtarması ayrıca açık; iOS derleme başarısı Android kabulü değildir.
+
+Sıradaki geliştirme paketi 1. maddedir. Fotoğraf/kimlik işlemlerinin gerçek
+cihaz kabulü, yeni geliştirmeler sürerken ayrıca yürütülebilir.
