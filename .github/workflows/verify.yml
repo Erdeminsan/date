@@ -26,6 +26,7 @@ jobs:
           "$RUNNER_TEMP/flutter/bin/flutter" config --no-analytics
       - run: flutter pub get --enforce-lockfile
       - run: flutter analyze
+      - run: node --test tool/game-tests/engine.test.mjs
       - run: flutter test
       - run: python3 -m unittest discover -s tool/release-tests -v
       - run: npm ci --ignore-scripts --prefix tool/database-tests
