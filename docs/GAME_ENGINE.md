@@ -1,7 +1,7 @@
 # sky-hop-v1 fizik sözleşmesi
 
-Durum: bağımsız Dart ve JavaScript motoru; mevcut antrenman ekranına ve canlı
-oda servisine henüz bağlı değildir. JavaScript modülü Node/Deno uyumludur,
+Durum: Dart motoru antrenman ekranına bağlandı. JavaScript replay motoru
+hazır; canlı oda servisi henüz yok. JavaScript modülü Node/Deno uyumludur,
 herhangi bir kullanıcı yetkilendirmesi veya ağ API’si içermez.
 
 - Tur 5400 adımdır (120 Hz, 45 saniye). Girdi sıfır tabanlı adımın başında uygulanır.
@@ -29,5 +29,20 @@ engine_version, zaman penceresi, paket sırası ve idempotency kontrolünden son
 saklanan girdileri bu motora verecek. İstemci skoru veya sonradan gönderilmiş
 bütün oyun geçmişi tek başına kabul edilmeyecek.
 
-Sonraki adımlar: antrenman adaptörü ve kare hızı testleri; oda/davet yaşam
-döngüsü; zaman damgalı giriş paketleri; doğrulanmış sonuca bağlı kazanan ödülü.
+## Antrenman entegrasyonu
+
+`Round` artık ikinci bir fizik uygulaması değildir: GameEngine için zaman ve
+çizim adaptörüdür. 30/60/120 Hz karelerde aynı zamanlı dokunuşlar aynı tam
+sonucu üretir. Dokunuş bir sonraki fizik adımına yazılır; aynı adımdaki tekrar
+tek girdiye dönüşür. Kaydedilen girdilerin replay sonucu ekran motoruyla aynıdır.
+Geri sayımın bittiği karede kalan süre kaybolmaz; tur tam 5400 adımda biter.
+Geçersiz kare süreleri atlanır; çok uzun kare en fazla turun kalanını işler.
+
+Yerel antrenman arka planda durur, bekleyen dokunuş temizlenir ve kullanıcı
+Devam et seçmeden ilerlemez. Flame otomatik yeniden başlasa bile oturumun
+ayrı pause kontrolü fiziği durdurur. Ağlı oyun bu yerel duraklatma kuralını
+kullanmayacak; sunucu zamanı ve kopuş kuralları uygulanacak.
+
+Sonraki adımlar: oda/davet yaşam döngüsü; zaman damgalı giriş paketleri;
+doğrulanmış sonuca bağlı kazanan ödülü. Gerçek cihaz oynanış/performance
+kabulü ve çok oyunculu kabul testleri hâlâ gereklidir.

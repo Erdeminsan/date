@@ -5,11 +5,21 @@ import 'round.dart';
 class FlightGame extends FlameGame {
   FlightGame({required this.onFinished});
   final void Function(int score) onFinished;
-  final round = Round();
-  double countdown = 3;
+  final session = PracticeSession();
+  Round get round => session.round;
+  double get countdown => session.countdown;
   bool reported = false;
   void flap() {
-    if (countdown <= 0) round.flap();
+    session.flap();
+  }
+
+  void suspendPractice() {
+    session.pause();
+    pauseEngine();
+  }
+  void resumePractice() {
+    session.resume();
+    resumeEngine();
   }
 
   @override
@@ -17,11 +27,7 @@ class FlightGame extends FlameGame {
   @override
   void update(double dt) {
     super.update(dt);
-    if (countdown > 0) {
-      countdown -= dt;
-      return;
-    }
-    round.advance(dt);
+    session.advance(dt);
     if (round.finished && !reported) {
       reported = true;
       onFinished(round.score);
@@ -42,6 +48,7 @@ class FlightGame extends FlameGame {
   void render(Canvas canvas) {
     super.render(canvas);
     final w = size.x, h = size.y;
+    if (w <= 0 || h <= 0) return;
     final paint = Paint();
     for (var i = 0; i < 30; i++) {
       paint.color = const Color(0xFF45415E);
