@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../backend/repository.dart';
 import '../demo_app.dart' show GameScreen;
@@ -5,6 +6,7 @@ import 'profile_editor.dart';
 import 'account_settings.dart';
 import 'profile_photo.dart';
 import 'game_lobby.dart';
+import 'match_details_screen.dart';
 import 'chat_screen.dart';
 
 class MemberHome extends StatefulWidget {
@@ -14,7 +16,11 @@ class MemberHome extends StatefulWidget {
   State<MemberHome> createState() => _MemberHomeState();
 }
 
-class _MemberHomeState extends State<MemberHome> {
+class _MemberHomeState extends State<MemberHome> with WidgetsBindingObserver {
+  Timer? matchTimer;
+  late final String owner;
+  bool foreground = true, syncingMatches = false;
+  String? matchesError;
   OwnProfile? profile;
   List<Person> people = [];
   List<Connection> connections = [];
@@ -26,23 +32,83 @@ class _MemberHomeState extends State<MemberHome> {
   @override
   void initState() {
     super.initState();
+    owner = widget.backend.userId;
+    WidgetsBinding.instance.addObserver(this);
     reload();
+    matchTimer = Timer.periodic(const Duration(seconds: 5), (_) => refreshMatches());
+  }
+
+  @override
+  void dispose() {
+    generation++; matchTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this); super.dispose();
+  }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    foreground = state == AppLifecycleState.resumed;
+    if (!foreground) {
+      generation++;
+      setState(() {
+        syncingMatches = false; loadingMore = false; loading = false;
+        connections = []; matchesCursor = null;
+      });
+    } else if (profile == null) {
+      reload();
+    } else {
+      refreshMatches();
+    }
+  }
+  void checkOwner() {
+    if (widget.backend.userId != owner) throw StateError('Session changed');
+  }
+  Future<void> refreshMatches() async {
+    if (!mounted || !foreground || tab != 1 || profile == null || loading ||
+        loadingMore || acting || syncingMatches || ModalRoute.of(context)?.isCurrent != true) return;
+    final request = generation;
+    final pages = connections.isEmpty ? 1 : (connections.length + 19) ~/ 20;
+    syncingMatches = true;
+    try {
+      checkOwner();
+      final items = <String, Connection>{};
+      FeedCursor? cursor;
+      for (var pageNumber = 0; pageNumber < pages; pageNumber++) {
+        final page = await widget.backend.matches(before: cursor).timeout(const Duration(seconds: 6));
+        if (!mounted || request != generation || !foreground || tab != 1 || ModalRoute.of(context)?.isCurrent != true) return;
+        checkOwner();
+        for (final item in page.items) { items[item.id] = item; }
+        cursor = page.next;
+        if (cursor == null) break;
+      }
+      setState(() { connections = items.values.toList(); matchesCursor = cursor; matchesError = null; });
+    } catch (_) {
+      if (mounted && request == generation) setState(() {
+        connections = []; matchesCursor = null;
+        matchesError = 'Eşleşmeler güncellenemedi. Bağlantı sağlandığında yeniden denenecek.';
+      });
+    } finally {
+      if (mounted && request == generation) setState(() => syncingMatches = false);
+    }
   }
 
   Future<void> reload() async {
     final request = ++generation;
     setState(() {
       loading = true;
+      syncingMatches = false; matchesError = null;
       loadingMore = false;
       error = null;
     });
     try {
+      checkOwner();
       final p = await widget.backend.profile();
+      checkOwner();
       final candidates =
           p == null ? const FeedPage<Person>([], null) : await widget.backend.discover();
+      checkOwner();
       final matches =
           p == null ? const FeedPage<Connection>([], null) : await widget.backend.matches();
       if (!mounted || request != generation) return;
+      checkOwner();
       setState(() {
         profile = p;
         people = candidates.items;
@@ -60,13 +126,15 @@ class _MemberHomeState extends State<MemberHome> {
 
   Future<void> loadMore(bool matching) async {
     final cursor = matching ? matchesCursor : peopleCursor;
-    if (cursor == null || loading || loadingMore || acting) return;
+    if (cursor == null || loading || loadingMore || acting || syncingMatches) return;
     final request = generation;
     setState(() => loadingMore = true);
     try {
+      checkOwner();
       if (matching) {
         final page = await widget.backend.matches(before: cursor);
         if (!mounted || request != generation) return;
+        checkOwner();
         setState(() {
           connections = {for (final item in [...connections, ...page.items]) item.id: item}.values.toList();
           matchesCursor = page.next;
@@ -74,6 +142,7 @@ class _MemberHomeState extends State<MemberHome> {
       } else {
         final page = await widget.backend.discover(before: cursor);
         if (!mounted || request != generation) return;
+        checkOwner();
         setState(() {
           people = {for (final item in [...people, ...page.items]) item.id: item}.values.toList();
           peopleCursor = page.next;
@@ -92,7 +161,7 @@ class _MemberHomeState extends State<MemberHome> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: OutlinedButton(
-        onPressed: loadingMore || acting ? null : () => loadMore(matching),
+        onPressed: loadingMore || acting || syncingMatches ? null : () => loadMore(matching),
         child: Text(loadingMore ? 'Yükleniyor…' : matching ? 'Daha fazla eşleşme' : 'Daha fazla profil'),
       ),
     );
@@ -105,8 +174,10 @@ class _MemberHomeState extends State<MemberHome> {
 
   Future<void> act(Future<void> Function() action) async {
     if (acting) return;
-    setState(() => acting = true);
+    generation++;
+    setState(() { acting = true; syncingMatches = false; loadingMore = false; });
     try {
+      checkOwner();
       await action();
       await reload();
     } catch (e) {
@@ -197,6 +268,8 @@ class _MemberHomeState extends State<MemberHome> {
     onSelected: (v) {
       if (v == 'block') {
         block(id);
+      } else if (v == 'details' && connection != null) {
+        Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => MatchDetailsScreen(backend: widget.backend, connection: connection)));
       } else if (v == 'game' && connection != null) {
         Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => GameLobby(backend: widget.backend, connection: connection)));
       } else if (v == 'unmatch' && connection != null) {
@@ -207,6 +280,7 @@ class _MemberHomeState extends State<MemberHome> {
     },
     itemBuilder:
         (_) => [
+          if (connection != null) const PopupMenuItem(value: 'details', child: Text('Açılan bilgiler')),
           if (connection != null) const PopupMenuItem(value: 'game', child: Text('Oyun daveti')),
           if (connection != null) const PopupMenuItem(value: 'unmatch', child: Text('Eşleşmeden ayrıl')),
           const PopupMenuItem(value: 'block', child: Text('Engelle')),
@@ -264,7 +338,7 @@ class _MemberHomeState extends State<MemberHome> {
             : NavigationBar(
               selectedIndex: tab,
               onDestinationSelected:
-                  acting ? null : (v) => setState(() => tab = v),
+                  acting ? null : (v) { setState(() => tab = v); if (v == 1) refreshMatches(); },
               destinations: const [
                 NavigationDestination(
                   icon: Icon(Icons.explore_outlined),
@@ -319,7 +393,8 @@ class _MemberHomeState extends State<MemberHome> {
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            if (connections.isEmpty)
+            if (matchesError != null) Text(matchesError!),
+            if (connections.isEmpty && matchesError == null)
               const Text(
                 'Henüz eşleşme yok. Karşılıklı beğeniler burada görünür.',
               ),

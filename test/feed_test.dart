@@ -8,6 +8,8 @@ const cursor = FeedCursor('2020-01-01T00:00:00.123456Z', 'first');
 class FakeBackend implements Backend {
   FakeBackend(this.fetch);
   @override
+  String get userId => 'me';
+  @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError('Unexpected backend call: ${invocation.memberName}');
   final Future<FeedPage<Person>> Function(FeedCursor?) fetch;
   @override
@@ -37,6 +39,7 @@ void main() {
     tester.view.physicalSize = const Size(430, 1100);
     tester.view.devicePixelRatio = 1;
     addTearDown(() { tester.view.resetPhysicalSize(); tester.view.resetDevicePixelRatio(); });
+    addTearDown(() async { await tester.pumpWidget(const SizedBox()); });
     await tester.pumpWidget(MaterialApp(home: MemberHome(backend: backend)));
     await tester.pumpAndSettle();
   }

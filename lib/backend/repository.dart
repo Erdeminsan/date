@@ -68,6 +68,12 @@ class GameRoom {
   final DateTime expiresAt;
   bool get active => ['invited','accepted','countdown','running','awaiting_result'].contains(status);
 }
+class MatchUnlocks {
+  MatchUnlocks(Map<String,dynamic> data)
+    : level = data['unlock_level'] as int, city = data['city'] as String?, interests = data['interests'] as String?;
+  final int level;
+  final String? city, interests;
+}
 class GameResult {
   GameResult(Map<String,dynamic> data)
     : winnerId = data['winner_id'] as String?, myScore = data['my_score'] as int,
@@ -206,6 +212,11 @@ class Backend {
       'p_match': matchId, 'p_action': action, 'p_room': roomId,
     });
     return RoomSnapshot(Map<String, dynamic>.from(data as Map));
+  }
+
+  Future<MatchUnlocks> matchUnlocks(String matchId) async {
+    final data = await client.rpc('match_unlocks', params: {'p_match': matchId});
+    return MatchUnlocks(Map<String,dynamic>.from(data as Map));
   }
 
   Future<GameResult?> gameResult(String roomId, {bool finalize = false}) async {
