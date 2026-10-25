@@ -1,7 +1,8 @@
 # 1.0.0 oyun planı — Sky Hop
 
-Durum: kazananın bilgi açması onaylandı; teknik tasarım ve uygulama aşamaları planlandı. Henüz çok oyunculu oda, sunucu skor doğrulaması veya
-bilgi açma uygulanmadı. Mevcut `Round` / `FlightGame` yalnızca antrenmandır.
+Durum: davet, hazır olma ve ortak sunucu zamanlı tur main içinde. Girdi akışı
+ve sonuç doğrulama çekirdeği ayrı geliştirme paketinde test ediliyor; canlı
+paket kabulü, kalıcı sonuç ve bilgi açılması henüz uygulanmadı.
 
 ## Oyuncu akışı
 
