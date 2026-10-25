@@ -42,3 +42,12 @@ kaldırma ve lifecycle/polling temizliğini kapsar.
 Sonraki paket: hazır olma, sunucu zamanlı ortak başlangıç, sürümlü giriş
 paketleri ve replay doğrulayıcı. Bunlar olmadan bu oda, çok oyunculu oyunun
 tamamlandığı anlamına gelmez.
+
+## Geliştirme dağıtımı
+
+Migration `20261025180144` geliştirme projesine uygulandı. Canlı yetki kontrolü:
+anon RPC çalıştıramıyor; authenticated RPC çalıştırabiliyor ama tabloya doğrudan
+INSERT yapamıyor; oda tablosunda RLS açık. Güvenlik danışmanında yalnızca
+`app_private.account_deletions`, `like_events` ve `game_invite_events` için
+bilerek istemci politikası verilmeyen özel tablo INFO kayıtları bulunuyor.
+[Açıklama](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
