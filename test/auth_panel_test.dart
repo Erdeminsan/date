@@ -88,4 +88,39 @@ void main() {
       );
     },
   );
+  testWidgets('Reset password needs email but not an existing password', (
+    tester,
+  ) async {
+    final emails = <String>[];
+    tester.view.physicalSize = const Size(430, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthPanel(
+          authenticate: (_, __, ___) async => null,
+          resend: (_) async {},
+          resetPassword: (email) async {
+            emails.add(email);
+          },
+        ),
+      ),
+    );
+    await tester.ensureVisible(find.text('Şifremi unuttum'));
+    await tester.tap(find.text('Şifremi unuttum'));
+    await tester.pumpAndSettle();
+    expect(emails, isEmpty);
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'test@example.com',
+    );
+    await tester.ensureVisible(find.text('Şifremi unuttum'));
+    await tester.tap(find.text('Şifremi unuttum'));
+    await tester.pumpAndSettle();
+    expect(emails, ['test@example.com']);
+    expect(find.textContaining('Uygun bir hesap varsa'), findsOneWidget);
+  });
 }

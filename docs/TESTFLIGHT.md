@@ -52,12 +52,12 @@ Recovery e-postası şablonu `{{ .ConfirmationURL }}` kullanmalıdır.
    aktif Developer Team'inizi seçin, Automatically manage signing'i açın.
    Bundle ID'yi Apple kaydı ile aynı yapın. Team ID/sertifika özel anahtarlarını
    sohbete veya repoya göndermeyin.
-2. Gerçek bir uygulama ikonu yerleştirin: Runner/Assets.xcassets/AppIcon.appiconset.
-   Scaffold'un Flutter varsayılan ikonuyla dış test yayını yapmayın.
+2. Geçici PlayMatch ikonu `assets/branding/app_icon.png` içinde hazırdır.
+   Mac setup scripti iOS AppIcon boyutlarını sips ile üretir. Xcode'da görünümünü kontrol edin.
 3. App Store Connect'te aynı bundle ID ile iOS uygulama kaydı oluşturun. Apple
    sözleşmeleri, yaş derecelendirmesi ve gerekli iletişim alanlarını tamamlayın.
-4. İlk başarılı `flutter pub get` sonrası `pubspec.lock` dosyasını repoya ekleyin.
-   CI artifact'ı da lockfile sağlar; release çözümünü aynı SDK ile doğrulayın.
+4. `pubspec.lock` CI'dan alınarak repoya eklendi. Setup/CI --enforce-lockfile
+   kullanır. Bağımlılık güncellemesini ayrı bir değişiklikte test edin.
 5. Daha önce yüklenmemiş artan build numarası seçin:
 
    ```bash
@@ -77,10 +77,12 @@ Recovery e-postası şablonu `{{ .ConfirmationURL }}` kullanmalıdır.
 
 ## Yayını engelleyen doğrulamalar
 
-- [ ] Flutter analiz/widget testleri ve iOS release derlemesi başarılı.
-- [ ] `pubspec.lock` commit edildi; fiziksel iPhone'da auth kabul testleri geçti.
+- [x] İlk CI çalışmasında Flutter analiz/widget testleri ve imzasız iOS release derlemesi başarılı.
+- [x] CI'dan üretilen `pubspec.lock` eklendi.
+- [ ] Fiziksel iPhone'da auth kabul testleri geçti.
 - [ ] SMTP, Site URL ve redirect allowlist gerçek ortamda doğrulandı.
-- [ ] Uygulama ikonu hazır; Apple Team/bundle ID eşleşmesi ve imzalama geçti.
+- [x] Geçici özgün uygulama ikonu ve iOS boyut üretimi hazır.
+- [ ] Apple Team/bundle ID eşleşmesi ve imzalama geçti.
 - [ ] Veri sorumlusu/iletişim adresi belli; gerçek gizlilik ve destek URL'leri hazır.
 - [ ] App Privacy cevapları: e-posta, kullanıcı ID, ad, doğum tarihi, şehir,
       ilgi alanları, beğeniler/eşleşmeler ve şikâyet kayıtlarının gerçek kullanımına

@@ -7,6 +7,7 @@ if [[ ! "$build_number" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 python3 scripts/testflight_preflight.py
+flutter pub get --enforce-lockfile
 flutter analyze
 flutter test
 # Bundle identifier and Team must already be set in Xcode. This creates an

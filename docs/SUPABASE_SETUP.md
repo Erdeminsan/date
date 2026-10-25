@@ -48,10 +48,9 @@ barındırır. Bu anahtar gizli değildir; veri güvenliğini RLS ve RPC yetkile
 veya repoya eklenmez. Kişisel ortam değişiklikleri için ignore edilen
 `config/local.json` kullanın.
 
-Bağımlılık `supabase_flutter: 2.12.0` olarak sabitlendi. Bu çalışma ortamında
-Flutter bağımlılık kurulumu güvenlik incelemesinde durduğundan `pubspec.lock`
-üretilmedi. İlk başarılı `flutter pub get` sonrasında bu dosyayı PR'a ekleyin;
-bunu yapmadan tekrarlanabilir release build kabulü vermeyin.
+Bağımlılık `supabase_flutter: 2.12.0` olarak sabitlendi. Flutter 3.38.0 ile
+CI'da bağımlılıklar çözüldü ve `pubspec.lock` repoya eklendi. İlk CI çalışmasında
+analiz, Flutter testleri ve imzasız iOS release derlemesi geçti.
 
 Mevcut demo bağımsız çalıştırılabilir:
 
@@ -112,8 +111,8 @@ npm test
 
 20 veritabanı sözleşme kontrolü yerelde geçti. Auth tabloları ve auth.uid test
 fixtures'larıdır; e-posta, JWT doğrulama, gerçek RLS ortam ayarı ve eşzamanlı
-iki ağ isteği testi değildir. Flutter yeni sürüm testleri henüz çalıştırılamadı;
-Dart format/sözdizimi kontrolü ve git diff --check geçti.
+iki ağ isteği testi değildir. Flutter testleri GitHub Actions üzerinde geçti;
+Dart format/sözdizimi kontrolü ve git diff --check de geçti.
 
 ## Yayın öncesi kalanlar
 
@@ -154,7 +153,7 @@ node --test tool/edge-tests/delete-account.test.mjs
 Canlı servise oturumsuz istek 401 AUTH_REQUIRED döndürdü. Gerçek hesabı silen
 uçtan uca test yapılmadı; testlerin geçmesi SMTP, gerçek JWT veya SDK ile
 başarılı silme akışının doğrulandığı anlamına gelmez. Flutter diyalog testleri
-eklendi, fakat bu ortamda çalıştırılamadı.
+eklendi ve GitHub Actions üzerinde geçti.
 
 Kabul testi için yalnızca silinmesi amaçlanan bir test hesabı kullanın:
 

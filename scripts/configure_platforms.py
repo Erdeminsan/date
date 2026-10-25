@@ -1,4 +1,7 @@
 """Idempotent native configuration; preserves signing and unrelated URL schemes."""
+import json
+import shutil
+import subprocess
 import plistlib
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -21,6 +24,18 @@ def configure(root):
         if not any(SCHEME in item.get('CFBundleURLSchemes', []) for item in schemes):
             schemes.append({'CFBundleTypeRole': 'Editor', 'CFBundleURLSchemes': [SCHEME]})
         info.write_bytes(plistlib.dumps(data, sort_keys=False))
+    icon_dir = root / 'ios/Runner/Assets.xcassets/AppIcon.appiconset'
+    master = root / 'assets/branding/app_icon.png'
+    catalog = icon_dir / 'Contents.json'
+    if master.exists() and catalog.exists():
+        sips = shutil.which('sips')
+        if not sips: raise RuntimeError('iOS icon generation requires macOS sips.')
+        for item in json.loads(catalog.read_text()).get('images', []):
+            filename = item.get('filename')
+            if not filename: continue
+            if Path(filename).name != filename: raise ValueError('Invalid icon path')
+            size = round(float(item['size'].split('x')[0]) * float(item['scale'].rstrip('x')))
+            subprocess.run([sips, '-z', str(size), str(size), str(master), '--out', str(icon_dir / filename)], check=True, stdout=subprocess.DEVNULL)
     manifest = root / 'android/app/src/main/AndroidManifest.xml'
     if manifest.exists():
         tree = ET.parse(manifest)
