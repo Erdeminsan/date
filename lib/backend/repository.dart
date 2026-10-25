@@ -53,6 +53,22 @@ FeedPage<T> decodeFeedPage<T>(List rows, T Function(Map<String, dynamic>) decode
     ? FeedCursor(last['created_at'] as String, last['id'] as String) : null);
 }
 
+class GameRoom {
+  GameRoom(Map<String, dynamic> data)
+    : id = data['id'] as String, inviterId = data['inviter_id'] as String,
+      status = data['status'] as String, expiresAt = DateTime.parse(data['expires_at'] as String);
+  final String id, inviterId, status;
+  final DateTime expiresAt;
+  bool get active => status == 'invited' || status == 'accepted';
+}
+class RoomSnapshot {
+  RoomSnapshot(Map<String, dynamic> data)
+    : room = data['room'] == null ? null : GameRoom(Map<String, dynamic>.from(data['room'] as Map)),
+      serverNow = DateTime.parse(data['server_now'] as String);
+  final GameRoom? room;
+  final DateTime serverNow;
+}
+
 class Backend {
   Backend(this.client);
   final SupabaseClient client;
@@ -149,6 +165,13 @@ class Backend {
     if (paths.isNotEmpty) await bucket.remove(paths);
   }
 
+  Future<RoomSnapshot> gameRoom(String matchId, {String action = 'read', String? roomId}) async {
+    final data = await client.rpc('game_room_action', params: {
+      'p_match': matchId, 'p_action': action, 'p_room': roomId,
+    });
+    return RoomSnapshot(Map<String, dynamic>.from(data as Map));
+  }
+
   Future<void> block(String id) async {
     await client.rpc('block_profile', params: {'p_target': id});
   }
@@ -233,6 +256,12 @@ String friendlyError(Object error) {
         return 'Doğum tarihi kayıt sonrasında değiştirilemez.';
       case 'PROFILE_UNAVAILABLE':
         return 'Bu profil şu anda erişilebilir değil. Listeyi yenile.';
+      case 'ROOM_UNAVAILABLE':
+        return 'Bu oyun odasına artık erişilemiyor. Eşleşmelerini yenile.';
+      case 'ROOM_ACTION_FORBIDDEN':
+        return 'Bu davete yalnızca karşı taraf yanıt verebilir.';
+      case 'INVITE_LIMIT':
+        return 'Son 24 saatte 20 oyun daveti sınırına ulaştın.';
       case 'LIKE_LIMIT':
         return 'Günlük 100 beğeni sınırına ulaştın.';
       case 'REPORT_LIMIT':
