@@ -21,8 +21,8 @@
 
 Oyunla açılacak bilgiler şehir ve ilgi alanlarıdır; doğum tarihi özel kalır.
 Onaylanan kural: yalnız kazananın ilk galibiyetinde rakibinin şehri, ikinci
-galibiyetinde ilgi alanları açılır. Eşitlikte bilgi açılmaz. Mesajlaşmanın
-açılma koşulu henüz kesinleşmedi.
+galibiyetinde ilgi alanları açılır. Eşitlikte bilgi açılmaz. Mesajlaşma eşleşme oluşunca iki tarafa da açılır;
+oyun ön koşulu yoktur.
 
 ## Uygulama sırası
 
@@ -76,7 +76,7 @@ ve geçmiş birleştirmesi çalışma kodunu değiştirmiyor.
    eşitlik/yarım tur ödülsüz; erişim yalnızca ilgili eşleşmeye ait.
 4. Ürün akışları: keşfet tercihleri, eşleşmeden ayrılma, otomatik güncellemeler,
    kalıcı mesajlaşma. Demo sohbeti yalnızca bellekte; gerçek mesajlaşma değildir.
-   Sohbetin eşleşmede mi ilk turdan sonra mı açılacağı kararlaştırılmalı.
+   Onaylanan sohbet kuralı: eşleşme oluşunca iki taraf da yazışabilir.
 5. Moderasyon: şikâyet inceleme, yaptırım, denetim kayıtları, fotoğraf içerik
    kontrolü ve saklama/silme süreçleri.
 6. Yayın kabulü: gerçek e-posta/SMTP ve yönlendirmeler, iki hesaplı fiziksel

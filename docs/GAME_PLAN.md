@@ -14,7 +14,7 @@ Eşleşme → oyun daveti → kabul → iki oyuncunun hazır olması → ortak g
 korunabilir. Geçilen engel puan verir. Sonuçta puan, çarpışma ve eşitlik açık
 biçimde gösterilir. Sonuç kuralları sürümlenir; istemci sonucu tek başına yazamaz.
 
-## Onaylanan oyun ödülü ve açık ürün kararı
+## Onaylanan oyun ödülü ve sohbet kuralı
 
 Kullanıcı kararı (25 Ekim 2026): yalnız kazanan rakibinin sıradaki bilgisini
 açar. İlk galibiyette rakibin şehri, ikinci galibiyette ilgi alanları açılır.
@@ -25,7 +25,9 @@ Zaten açılmış alanlar yeniden ödül sayılmaz; aynı sonuç ikinci kez işl
 
 Doğum tarihi ve e-posta oyun ödülü olmaz. Şehir/ilgi alanlarını oyunla açmak
 kayıt/profil ekranında açıkça anlatılacak; yalnızca ilgili eşleşme erişebilir.
-Sohbetin eşleşmede mi yoksa ilk turdan sonra mı açılacağı da kesinleştirilmeli.
+Onaylanan sohbet kuralı: eşleşme oluşunca iki taraf da mesajlaşabilir;
+sohbet için oyun tamamlama veya galibiyet gerekmez. Eşleşmeden ayrılma ve
+engelleme mesaj erişimini kaldırır.
 1.0.0 için tek oyun Sky Hop'tur; başka mini oyunlar kapsamda varsayılmaz.
 
 ## Oda ve zaman yönetimi
