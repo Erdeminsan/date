@@ -167,3 +167,18 @@ Kabul testi için yalnızca silinmesi amaçlanan bir test hesabı kullanın:
 
 Şifre sıfırlama ve mobil doğrulama bağlantısı yayın hazırlığı dalında eklendi;
 canlı e-posta/redirect kabul testi henüz tamamlanmadı. Bkz. TESTFLIGHT.md.
+
+## Hesap güvenliği düzeltmesi
+
+`20261025162033_account_safety.sql` canlı geliştirme projesine uygulandı.
+Beğeni limiti `app_private.like_events` üzerinden hesaplanır; engelleme sayaç
+kaybetmez. Hedef hesap durumu profil/eşleşme RLS'inde ve beğeni RPC'sinde kontrol
+edilir. 22 yerel sözleşme kontrolü geçti; aynı anda gelen ağ istekleri bu testin
+kapsamında değildir. Mevcut kullanıcı ve çift advisory lock'ları korunur.
+
+Canlı yetki sorgusu: olay tablosunda RLS açık, anonim okuma ve istemci yazma/silme
+kapalı. Security advisor yalnızca bu özel tablo için `rls_enabled_no_policy`
+INFO kaydı verdi: tablo bilinçli olarak istemci politikası olmadan tüm erişimi
+reddeder; yazma/okuma sahibi olan kontrollü definer fonksiyondadır. Bu tabloyu
+public API şemasına taşımayın veya istemciye yetki vermeyin.
+Açıklama: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy

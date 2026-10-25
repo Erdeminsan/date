@@ -112,6 +112,7 @@ class _SessionGateState extends State<SessionGate> {
             );
           },
           finish: () => widget.client.auth.signOut(scope: SignOutScope.global),
+          cancel: () => widget.client.auth.signOut(scope: SignOutScope.local),
         );
       }
       if (session != null)

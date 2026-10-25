@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import '../backend/repository.dart';
 
 class PasswordRecovery extends StatefulWidget {
-  const PasswordRecovery({super.key, required this.save, required this.finish});
+  const PasswordRecovery({super.key, required this.save, required this.finish, this.cancel});
   final Future<void> Function(String password) save;
   final Future<void> Function() finish;
+  final Future<void> Function()? cancel;
   @override
   State<PasswordRecovery> createState() => _PasswordRecoveryState();
 }
@@ -43,6 +44,18 @@ class _PasswordRecoveryState extends State<PasswordRecovery> {
                       ? 'Şifren değişti. Oturumu kapatmak için tekrar dene.'
                       : friendlyError(e),
         );
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> cancel() async {
+    if (busy) return;
+    setState(() { busy = true; error = null; });
+    try {
+      await widget.cancel!();
+    } catch (e) {
+      if (mounted) setState(() => error = friendlyError(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -101,6 +114,8 @@ class _PasswordRecoveryState extends State<PasswordRecovery> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Text(error!),
                   ),
+                if (!saved && widget.cancel != null)
+                  TextButton(onPressed: busy ? null : cancel, child: const Text('Vazgeç ve girişe dön')),
                 FilledButton(
                   onPressed: busy ? null : submit,
                   child: Text(
