@@ -67,8 +67,12 @@ void main() {
   testWidgets('background pauses polling and dispose removes its timer', (tester) async {
     final backend = ChatBackend(); await open(tester,backend);
     final count = backend.reads;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     await tester.pump(const Duration(seconds:6)); expect(backend.reads,count);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle(); expect(backend.reads,count+1);
     await close(tester); await tester.pump(const Duration(seconds:6)); expect(backend.reads,count+1);
