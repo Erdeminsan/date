@@ -67,3 +67,5 @@ kaydı var; yeni paket tablosu bunlardan biridir. Açık istemci politikası bil
 
 Replay fiziksel olarak mümkün bir sonucu doğrular; bot kullanmadığını kanıtlamaz.
 Çekirdeğin tekrarlanabilir çıktısı DB idempotency ve yetkilendirme yerine geçmez.
+
+Sonuç servisi ve kazanan erişimi güncellemesi: [ROUND_RESULTS.md](ROUND_RESULTS.md).

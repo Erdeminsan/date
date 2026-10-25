@@ -240,6 +240,61 @@ try {
     await asUser('a'); await assert.rejects(()=>submit(),/ROOM_UNAVAILABLE/);
     await call('read',room);
   });
+  await check('service results are idempotent; winner-only unlocks progress independently', async () => {
+    await asUser('a'); const match=(await scalar('select id from public.matches')).id;
+    async function roomFixture() {
+      await db.exec('reset role');
+      const r=await scalar(`insert into public.game_rooms(match_id,inviter_id,status,ready_low,ready_high,seed,starts_at,ends_at,expires_at)
+        values($1,$2,'running',true,true,42,now()-interval '45 seconds',now(),now()+interval '15 seconds') returning id`,[match,ids.a]);
+      await db.query(`insert into app_private.game_input_packets(room_id,player_id,sequence,flaps,received_at)
+        select r.id,p.id,n,array[]::integer[],r.starts_at+(n+1)*interval '1 second' from public.game_rooms r
+        cross join unnest($2::uuid[]) p(id) cross join generate_series(0,44) n where r.id=$1`,[r.id,[ids.a,ids.b]]);
+      return r.id;
+    }
+    async function finish(room,low,high) {
+      await db.exec('reset role; set role service_role');
+      const prepared=(await scalar('select public.prepare_game_result($1,$2) as r',[room,ids.a])).r;
+      assert.equal(prepared.status,'verify'); assert.equal(verifyRound(prepared).winnerId,null);
+      // Trusted worker output fixture; Edge tests separately prove client claims cannot reach this RPC.
+      return (await scalar('select public.finalize_game_result($1,$2,$3,$4,1,1) as r',[room,ids.a,low,high])).r;
+    }
+    const room=await roomFixture();
+    await asUser('a');
+    await assert.rejects(()=>db.query('select public.prepare_game_result($1,$2)',[room,ids.a]),/permission denied/);
+    await assert.rejects(()=>db.query('select public.finalize_game_result($1,$2,9,0,0,0)',[room,ids.a]),/permission denied/);
+    await assert.rejects(()=>db.query('select * from app_private.game_results'),/permission denied/);
+    await asUser('c'); await assert.rejects(()=>db.query('select public.game_result($1)',[room]),/ROOM_UNAVAILABLE/);
+    const first=await finish(room,2,1);
+    assert.equal(first.unlock_level,1); assert.equal(first.city,'Private city'); assert.equal(first.interests,null);
+    assert.equal('birth_date' in first,false); assert.equal('email' in first,false);
+    const retry=(await scalar('select public.finalize_game_result($1,$2,0,9,1,1) as r',[room,ids.a])).r;
+    assert.deepEqual(retry,first);
+    await asUser('b'); const loser=(await scalar('select public.game_result($1) as r',[room])).r;
+    assert.equal(loser.unlock_level,0); assert.equal(loser.city,null); assert.equal(loser.interests,null);
+    const second=await finish(await roomFixture(),3,1);
+    assert.equal(second.unlock_level,2); assert.equal(second.interests,'Private interests');
+    const third=await roomFixture(); await finish(third,0,1);
+    await asUser('b'); const b=(await scalar('select public.game_result($1) as r',[third])).r;
+    assert.equal(b.unlock_level,1); assert.equal(b.interests,null);
+    const tie=await finish(await roomFixture(),2,2); assert.equal(tie.winner_id,null); assert.equal(tie.unlock_level,2);
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.game_results where match_id=$1',[match])).n,4);
+  });
+  await check('cancellation between verification and finalization grants nothing', async () => {
+    await db.exec('reset role'); const match=(await scalar('select id from public.matches')).id;
+    const r=await scalar(`insert into public.game_rooms(match_id,inviter_id,status,ready_low,ready_high,seed,starts_at,ends_at,expires_at)
+      values($1,$2,'awaiting_result',true,true,42,now()-interval '45 seconds',now(),now()+interval '15 seconds') returning id`,[match,ids.a]);
+    await db.query(`insert into app_private.game_input_packets(room_id,player_id,sequence,flaps,received_at)
+      select r.id,p.id,n,array[]::integer[],r.starts_at+(n+1)*interval '1 second' from public.game_rooms r
+      cross join unnest($2::uuid[]) p(id) cross join generate_series(0,44) n where r.id=$1`,[r.id,[ids.a,ids.b]]);
+    await db.exec('set role service_role');
+    assert.equal((await scalar('select public.prepare_game_result($1,$2) as r',[r.id,ids.a])).r.status,'verify');
+    await asUser('a'); await db.query("select public.game_room_action($1,'cancel',$2)",[match,r.id]);
+    await db.exec('reset role; set role service_role');
+    await assert.rejects(()=>db.query('select public.finalize_game_result($1,$2,1,0,0,0)',[r.id,ids.a]),/ROOM_UNAVAILABLE/);
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.game_results where room_id=$1',[r.id])).n,0);
+  });
   await check('messaging enforces membership, stable retry, cursor pages and durable limits', async () => {
     await asUser('a'); const match=(await scalar('select id from public.matches')).id;
     const nonce='10000000-0000-4000-8000-000000000001';
@@ -521,6 +576,7 @@ try {
       assert.equal((await db.query(`select * from public.${table}`)).rows.length,0);
     }
     assert.equal((await db.query('select * from app_private.game_input_packets')).rows.length,0);
+    assert.equal((await db.query('select * from app_private.game_results')).rows.length,0);
     assert.equal((await db.query('select * from public.profiles')).rows.length,1);
     assert.equal((await db.query('select * from public.profile_details')).rows.length,1);
     await asUser('b');

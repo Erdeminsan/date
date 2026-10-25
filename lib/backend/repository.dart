@@ -68,6 +68,15 @@ class GameRoom {
   final DateTime expiresAt;
   bool get active => ['invited','accepted','countdown','running','awaiting_result'].contains(status);
 }
+class GameResult {
+  GameResult(Map<String,dynamic> data)
+    : winnerId = data['winner_id'] as String?, myScore = data['my_score'] as int,
+      opponentScore = data['opponent_score'] as int, myHits = data['my_hits'] as int,
+      opponentHits = data['opponent_hits'] as int, city = data['city'] as String?,
+      interests = data['interests'] as String?;
+  final String? winnerId, city, interests;
+  final int myScore, opponentScore, myHits, opponentHits;
+}
 class RoomSnapshot {
   RoomSnapshot(Map<String, dynamic> data)
     : room = data['room'] == null ? null : GameRoom(Map<String, dynamic>.from(data['room'] as Map)),
@@ -197,6 +206,17 @@ class Backend {
       'p_match': matchId, 'p_action': action, 'p_room': roomId,
     });
     return RoomSnapshot(Map<String, dynamic>.from(data as Map));
+  }
+
+  Future<GameResult?> gameResult(String roomId, {bool finalize = false}) async {
+    final dynamic data;
+    if (finalize) {
+      final response = await client.functions.invoke('finish-round', body: {'room_id': roomId});
+      data = response.data;
+    } else {
+      data = await client.rpc('game_result', params: {'p_room': roomId});
+    }
+    return data['status'] == 'completed' ? GameResult(Map<String,dynamic>.from(data as Map)) : null;
   }
 
   Future<void> submitGameInput(String roomId, int sequence, List<int> flaps, {required String expectedUserId}) async {
