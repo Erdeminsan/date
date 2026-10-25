@@ -1,8 +1,9 @@
 # 1.0.0 oyun planı — Sky Hop
 
 Durum: davet, hazır olma ve ortak sunucu zamanlı tur main içinde. Girdi akışı
-ve sonuç doğrulama çekirdeği ayrı geliştirme paketinde test ediliyor; canlı
-paket kabulü, kalıcı sonuç ve bilgi açılması henüz uygulanmadı.
+ve sonuç doğrulama çekirdeği geliştirme paketinde test ediliyor. Paket kabulü
+RPC’si geliştirme ortamına uygulandı; Flutter gönderimi eklendi. Kalıcı sonuç
+ve bilgi açılması henüz uygulanmadı.
 
 ## Oyuncu akışı
 

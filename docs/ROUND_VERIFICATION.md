@@ -1,7 +1,8 @@
 # Ortak tur doğrulama çekirdeği
 
-Durum: saf Node/Deno uyumlu modül ve testler. HTTP endpoint, migration,
-istemci paket gönderimi veya canlı dağıtım içermez. Bilgi açmaz.
+Durum: Node/Deno doğrulama çekirdeği, Supabase paket kabul RPC’si ve Flutter
+göndericisi eklendi. Paket migration’ı geliştirme ortamında uygulandı.
+Sonuç servisi ve kalıcı ödül işlemi henüz bağlı değil; bilgi açmaz.
 
 `supabase/functions/_shared/game-engine.mjs` tek JavaScript fizik kaynağıdır;
 eski test yolu bunu yeniden dışa aktarır. Mevcut 16 Dart/JS golden vektörü
@@ -25,15 +26,37 @@ bu fonksiyona doğrudan vermek güvenlik açığı olur.
 Bunlar yeni protokolün test edilmiş başlangıç sınırlarıdır; fiziksel iki cihaz
 ve gecikme testleriyle kabul edilmeden üretim hazır sayılmaz. Sunucunun tek
 bir saat kaynağı kullanılmalı; DB timestamp dönüşümünde milisaniye kuralı
-sabit tutulmalıdır. Oda inputProtocol alanı henüz veritabanında bulunmaz;
-canlı entegrasyon migration'ı bunu açıkça sabitlemelidir.
+sabit tutulmalıdır. Oda input_protocol alanı migration ile sky-hop-input-v1 olarak sabitlendi.
+Milisaniye dönüşümü floor(epoch * 1000) olarak DB→replay testinde doğrulanır.
 
-## Canlı entegrasyon için kalan işler
+## Paket kabulü ve istemci gönderimi
 
-1. Yetkili katılımcıdan paket kabulü: oda/hesap/eşleşme kontrolü, server receipt,
+`submit_game_input(room, sequence, flaps)` aktörü oturumdan, zamanı veritabanından
+alır. Sunucu aralığı sequence üzerinden türetir. Paketler private tabloda RLS
+ile kapalıdır; istemcinin doğrudan SELECT/INSERT/UPDATE/DELETE izni yoktur.
+Eşleşme çift kilidi altında katılımcı, hesap, engel, oda durumu, sürüm ve süre
+tekrar kontrol edilir. Aynı sıra ve içerik ilk alım zamanını döndürür;
+farklı içerik reddedilir. Önceki paket yoksa sıra atlanamaz. Her oyuncu için
+en fazla 45 paket ve her pakette en fazla 120 flap saklanabilir. Bu depolama
+sınırı genel HTTP istek taşkını önlemi değildir; gateway gözlemi ayrıca gerekir.
+
+Flutter tamamlanan 120 tick aralıklarını 250 ms aralıklarla kontrol eder;
+aynı anda tek istek gönderir, iki saniye yanıt alınmazsa aynı immutable paketi
+tekrar dener. Paket başlangıcından beş saniye geçince iptal eder. Son paket
+onaylanmadan gönderim tamamlandı demez; arka plan/hesap değişimi gönderimi
+kapatır. Kapanan uygulamada paketler diske yazılmaz; bu tur ödül üretemez.
+
+Migration: 20261025190155_game_input_packets, geliştirme ortamında uygulandı.
+Güvenlik danışmanında yalnız private deny-all tablolarına ilişkin beş INFO
+kaydı var; yeni paket tablosu bunlardan biridir. Açık istemci politikası bilerek yoktur.
+[Danışman açıklaması](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+
+## Canlı sonuç entegrasyonu için kalan işler
+
+1. Uygulanan paket kabulünün gerçek cihaz kabulü: oda/hesap/eşleşme kontrolü, server receipt,
    paket boyutu ve hız sınırı; unique(room, player, sequence). Aynı içerik retry
    ilk alım zamanını korur; değişen içerik reddedilir. Tamamlanmış aralık değişmez.
-2. Flutter tur boyunca bir saniyelik tamamlanmış aralıkları gönderir; başarısız
+2. Uygulanan Flutter gönderiminin gerçek cihaz kabulü: tur boyunca bir saniyelik tamamlanmış aralıkları gönderir; başarısız
    gönderim süre sınırında aynı paketle tekrar denenir. Uzun kopuş ödülsüzdür.
 3. Servis güvenilir paketleri okur, çekirdeği çağırır; sonuç yazarken eşleşme/oda
    kilidi altında erişimi tekrar kontrol eder. İptal/engel/unmatch yarışları
