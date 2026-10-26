@@ -48,7 +48,7 @@ class _PhotoEvidenceScreenState extends State<PhotoEvidenceScreen> with WidgetsB
   Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Fotoğraf kanıtı')),body:SafeArea(child:ListView(padding:const EdgeInsets.all(20),children:[
     if(busy)const LinearProgressIndicator(),
     if(error!=null)Text(error!),
-    if(bytes!=null)Image.memory(bytes!,fit:BoxFit.contain,errorBuilder:(_,__,___)=>const Text('Kayıtlı görsel çözümlenemedi.')),
+    if(bytes!=null)Image.memory(bytes!,height:MediaQuery.sizeOf(context).height*0.65,fit:BoxFit.contain,errorBuilder:(_,__,___)=>const Text('Kayıtlı görsel çözümlenemedi.')),
     TextButton(onPressed:busy?null:load,child:const Text('Yenile')),
   ])));
 }

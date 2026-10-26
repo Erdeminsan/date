@@ -75,7 +75,7 @@ void main(){
   });
   testWidgets('case or role access loss clears moderator image', (tester)async{
     final b=PhotoReportBackend();await tester.pumpWidget(MaterialApp(home:PhotoEvidenceScreen(backend:b,reportId:'report')));await tester.pumpAndSettle();
-    expect(find.byType(Image),findsOneWidget);expect(b.viewed,['report']);b.allowed=false;
+    expect(b.viewed,['report']);expect(find.text('Fotoğraf kanıtı yüklenemedi.'),findsNothing);expect(find.byType(Image),findsOneWidget);b.allowed=false;
     await tester.pump(const Duration(seconds:5));await tester.pumpAndSettle();
     expect(find.byType(Image),findsNothing);expect(find.textContaining('Fotoğrafa erişilemiyor'),findsOneWidget);await close(tester);
   });
