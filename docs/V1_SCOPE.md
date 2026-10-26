@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | Üyelik | Kayıt, doğrulama, giriş/çıkış, sıfırlama, hesap silme; gerçek cihazda soğuk/sıcak başlangıç | Kod var; gerçek e-posta/cihaz kabulü eksik |
 | Profil | 18+ profil, düzenleme, fotoğraf, görünürlük ve keşfet tercihleri | Metin profili ve özel fotoğraf akışı main içinde; gerçek cihaz kabulü ve tercihler eksik |
-| Keşfet | Tercihlere uygun, engelli/yasaklı hesapları dışlayan, devamı yüklenebilen liste | 20 kayıtlık sayfalama var; tercihler eksik |
+| Keşfet | Tercihlere uygun, engelli/yasaklı hesapları dışlayan, devamı yüklenebilen liste | 20 kayıtlık sayfalama ve yaş tercihi var; cihaz kabulü ve diğer tercihlerin kapsamı açık |
 | Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni ve sayfalama var; ayrılma main içinde; görünür eşleşme listesinin otomatik yenilenmesi geliştirme dalında |
 | Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Davet ve bekleme odası main içinde; hazır olma ve ortak zamanlı tur main içinde; sunucu sonucu/kopuş kabulü eksik |
 | Sonuç ve bilgi açılması | Sunucunun doğruladığı sonuç; aynı sonucu tekrar göndermek güvenli; yalnızca ilgili eşleşmeye erişim | Replay, canlı sonuç servisi ve eşleşmeden açılan bilgi ekranı geliştirme paketlerinde; cihaz kabulü eksik |
@@ -117,3 +117,5 @@ Sıradaki iş canlı girdi kaydı ve sonuç/ödül işlemidir. Doğrulama çekir
 Doğrulanmış sonuç ve erişim paketi: [ROUND_RESULTS.md](ROUND_RESULTS.md).
 
 Otomatik eşleşme yenilemesi: [LIVE_MATCHES.md](LIVE_MATCHES.md).
+
+Keşfet yaş tercihleri: [DISCOVERY_PREFERENCES.md](DISCOVERY_PREFERENCES.md).

@@ -8,6 +8,7 @@ import 'profile_photo.dart';
 import 'game_lobby.dart';
 import 'match_details_screen.dart';
 import 'chat_screen.dart';
+import 'discovery_preferences_screen.dart';
 
 class MemberHome extends StatefulWidget {
   const MemberHome({super.key, required this.backend});
@@ -197,6 +198,11 @@ class _MemberHomeState extends State<MemberHome> with WidgetsBindingObserver {
               'Birbirinizi keşfette göremezsiniz. Mevcut eşleşme ve karşılıklı beğeniler kaldırılır.',
             ),
             actions: [
+        if (profile != null && tab == 0) IconButton(tooltip: 'Keşfet tercihleri',icon: const Icon(Icons.tune),
+          onPressed: acting || loading ? null : () async {
+            final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => DiscoveryPreferencesScreen(backend: widget.backend)));
+            if (mounted && saved == true) await reload();
+          }),
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
                 child: const Text('Vazgeç'),

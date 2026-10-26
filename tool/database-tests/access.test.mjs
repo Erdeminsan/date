@@ -73,6 +73,29 @@ try {
   await check('birth date cannot be changed after creation', async () => {
     await assert.rejects(() => save('Alice','1999-01-01'), /BIRTH_DATE_IMMUTABLE/);
   });
+  await check('discovery age preferences are private, validated, inclusive and applied before pagination', async () => {
+    await asUser('a');
+    const get=async()=>(await scalar('select public.get_discovery_preferences() as r')).r;
+    assert.deepEqual(await get(),{min_age:18,max_age:null});
+    for(const [lo,hi] of [[17,null],[25,24],[18,100],[101,null],[null,30]])
+      await assert.rejects(()=>db.query('select public.set_discovery_preferences($1,$2)',[lo,hi]),/INVALID_PREFERENCES/);
+    await db.exec('reset role');
+    await db.query("update public.profile_details set birth_date=current_date-interval '30 years' where user_id=$1",[ids.b]);
+    await db.query("update public.profile_details set birth_date=current_date-interval '31 years' where user_id=$1",[ids.c]);
+    await asUser('a');await db.query('select public.set_discovery_preferences(30,30)');
+    assert.deepEqual(await get(),{min_age:30,max_age:30});
+    const page=(await db.query('select * from public.discover_page()')).rows;
+    assert.deepEqual(page.map(p=>p.id),[ids.b]);assert.equal('birth_date' in page[0],false);
+    assert.deepEqual((await db.query('select * from public.discover_profiles()')).rows.map(p=>p.id),[ids.b]);
+    await assert.rejects(()=>db.query('select * from app_private.discovery_preferences'),/permission denied/);
+    await asUser('b');assert.deepEqual(await get(),{min_age:18,max_age:null});
+    await asUser('a');await db.query('select public.set_discovery_preferences(31,null)');
+    assert.deepEqual((await db.query('select * from public.discover_page()')).rows.map(p=>p.id),[ids.c]);
+    await db.query('select public.set_discovery_preferences(18,null)');
+    await db.exec('reset role');
+    await db.query("update public.profile_details set birth_date='2000-01-01' where user_id=any($1::uuid[])",[[ids.b,ids.c]]);
+    await asUser('a');
+  });
   await check('one-sided like produces no match', async () => {
     assert.equal((await scalar('select public.like_profile($1) as id',[ids.b])).id,null);
     assert.equal((await db.query('select * from public.matches')).rows.length,0);
@@ -479,6 +502,7 @@ try {
     for (let i=0; i<targetIds.length; i++) {
       await db.query('insert into auth.users(id,email_confirmed_at) values($1,now())',[targetIds[i]]);
       await db.query("insert into public.profiles(id,display_name,created_at) values($1,$2,'2020-01-01T00:00:00.123456Z')",[targetIds[i],`Page ${i}`]);
+      await db.query("insert into public.profile_details(user_id,birth_date,city,interests) values($1,(current_date-case when $2::integer<30 then interval '30 years' else interval '50 years' end)::date,'City','')",[targetIds[i],i]);
       await db.query("insert into public.matches(id,user_low,user_high,created_at) values($1,$2,$3,'2020-01-01T00:00:00.123456Z')",[`20000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`,ids.a,targetIds[i]]);
     }
     await db.query('update public.profiles set discoverable=false where id=$1',[targetIds[0]]);
@@ -502,6 +526,10 @@ try {
     const discover=await pages('discover_page');
     assert.equal(new Set(discover.map(r=>r.id)).size,discover.length);
     assert.deepEqual(new Set(discover.filter(r=>targetIds.includes(r.id)).map(r=>r.id)),new Set(targetIds.slice(4)));
+    await db.query('select public.set_discovery_preferences(30,30)');
+    const filtered=await pages('discover_page');
+    assert.deepEqual(new Set(filtered.filter(r=>targetIds.includes(r.id)).map(r=>r.id)),new Set(targetIds.slice(4,30)));
+    await db.query('select public.set_discovery_preferences(18,null)');
     // Delete a seen row and insert a newer row between page requests.
     const initial=(await db.query('select *,created_at::text as cursor_time from public.discover_page()')).rows.slice(0,20);
     const boundary=initial.at(-1);
@@ -511,6 +539,7 @@ try {
     targetIds.push(newest);
     await db.query('insert into auth.users(id,email_confirmed_at) values($1,now())',[newest]);
     await db.query("insert into public.profiles(id,display_name) values($1,'Newest')",[newest]);
+    await db.query("insert into public.profile_details(user_id,birth_date,city,interests) values($1,current_date-interval '30 years','City','')",[newest]);
     await asUser('a');
     const next=(await db.query('select * from public.discover_page($1::timestamptz,$2::uuid)',[boundary.cursor_time,boundary.id])).rows.slice(0,20);
     assert.deepEqual(next.map(r=>r.id),discover.slice(20,40).map(r=>r.id));
@@ -572,6 +601,8 @@ try {
     await db.exec('reset role; set role anon');
     await assert.rejects(() => db.exec('select * from public.profiles'), /permission denied/);
     await assert.rejects(() => db.query('select public.match_unlocks($1)',[ids.a]), /permission denied/);
+    await assert.rejects(() => db.query('select public.get_discovery_preferences()'), /permission denied/);
+    await assert.rejects(() => db.query('select public.set_discovery_preferences(18,null)'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.discover_page()'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.matches_page()'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.game_rooms'), /permission denied/);

@@ -68,6 +68,11 @@ class GameRoom {
   final DateTime expiresAt;
   bool get active => ['invited','accepted','countdown','running','awaiting_result'].contains(status);
 }
+class DiscoveryPreferences {
+  DiscoveryPreferences(Map<String,dynamic> data):minAge=data['min_age'] as int,maxAge=data['max_age'] as int?;
+  final int minAge;
+  final int? maxAge;
+}
 class MatchUnlocks {
   MatchUnlocks(Map<String,dynamic> data)
     : level = data['unlock_level'] as int, city = data['city'] as String?, interests = data['interests'] as String?;
@@ -212,6 +217,12 @@ class Backend {
       'p_match': matchId, 'p_action': action, 'p_room': roomId,
     });
     return RoomSnapshot(Map<String, dynamic>.from(data as Map));
+  }
+
+  Future<DiscoveryPreferences> discoveryPreferences() async => DiscoveryPreferences(Map<String,dynamic>.from(await client.rpc('get_discovery_preferences') as Map));
+  Future<void> saveDiscoveryPreferences(int minAge,int? maxAge,{required String expectedUserId}) async {
+    if(userId!=expectedUserId)throw const AuthException('Session changed');
+    await client.rpc('set_discovery_preferences',params:{'p_min':minAge,'p_max':maxAge});
   }
 
   Future<MatchUnlocks> matchUnlocks(String matchId) async {
