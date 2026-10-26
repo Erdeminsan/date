@@ -136,3 +136,11 @@ Keşfet yaş tercihleri: [DISCOVERY_PREFERENCES.md](DISCOVERY_PREFERENCES.md).
   kısıtlama atomik kaldırılır. Diğer aktif kayıtlar korunur.
 - Ayrıntılar: MODERATION_APPEALS.md. İlk karar için kullanıcıya özel gerekçe,
   operatör/kanıt/retention/bildirim ve gerçek cihaz/TestFlight kabulü hâlâ açık.
+
+### 26 Ekim: kullanıcıya karar açıklaması
+- Yeni kısıtlamalarda kullanıcıya özel açıklama ayrı zorunlu alan; iç gerekçeden
+  otomatik kopyalanmaz. Hesap durumu, kısıtlama ve itiraz ekranlarında gösterilir.
+- Eski kayıtlar açıklamasız kalabilir ve itiraz yolu açıktır; eski istemci yeni
+  kısıtlama vermek için güncellenmelidir. Ayrıntılar MODERATION_APPEALS.md'de.
+- Mesaj/fotoğraf kanıtı, gerçek operatör, saklama/bildirim operasyonları, gerçek
+  cihaz kabulü ve imzalı TestFlight dağıtımı sürüm öncesi açık işlerdir.

@@ -9,6 +9,7 @@ class AppealBackend implements Backend {
   bool restricted = true, allowed = true, submitted = false, failSave = false;
   String owner = 'owner';
   String? savedId, savedBody, savedDecision, response;
+  String? publicNotice = 'Repeated unwanted contact';
   Future<bool>? nextStatus;
   @override
   String get userId => owner;
@@ -21,7 +22,7 @@ class AppealBackend implements Backend {
     'appeal_id': submitted || moderator ? 'appeal' : null, 'expires_at': '2026-10-28T12:00:00Z',
     'active': restricted, 'body': submitted || moderator ? 'Please reconsider' : null,
     'decision': savedDecision, 'response': response, 'display_name': moderator ? 'Target' : null,
-    'internal_reason': moderator ? 'Private evidence' : null,
+    'internal_reason': 'Private evidence', 'public_notice': publicNotice,
   });
   @override
   Future<FeedPage<SanctionAppeal>> ownSanctions({FeedCursor? before}) async => FeedPage([row()], null);
@@ -53,6 +54,7 @@ void main() {
   testWidgets('self appeal requires text and submits only the owned sanction', (tester) async {
     final b = AppealBackend(); await open(tester, b);
     expect(find.textContaining('Private evidence'), findsNothing);
+    expect(find.text('Karar açıklaması: Repeated unwanted contact'), findsOneWidget);
     await tester.tap(find.text('İtiraz et')); await tester.pumpAndSettle();
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'İtirazı gönder')).onPressed, isNull);
     await tester.enterText(find.byType(TextField), 'Please reconsider'); await tester.pump();
@@ -60,6 +62,13 @@ void main() {
     expect(b.savedId, 'sanction'); expect(b.savedBody, 'Please reconsider');
     expect(find.text('İtiraz inceleme bekliyor.'), findsOneWidget);
     expect(find.text('İtiraz et'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('legacy notice never falls back to internal evidence', (tester) async {
+    final b = AppealBackend()..publicNotice = null; await open(tester, b);
+    expect(find.textContaining('Bu eski kayıt için ayrı bir açıklama bulunmuyor'), findsOneWidget);
+    expect(find.textContaining('Private evidence'), findsNothing);
+    expect(find.text('İtiraz et'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
   testWidgets('moderator acceptance sends a user-visible response', (tester) async {

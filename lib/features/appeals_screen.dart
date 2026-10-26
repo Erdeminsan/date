@@ -138,6 +138,7 @@ class _AppealsScreenState extends State<AppealsScreen> with WidgetsBindingObserv
       for (final r in rows) Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (r.displayName != null) Text(r.displayName!),
         if (widget.moderator && r.internalReason != null) Text('İç gerekçe: ${r.internalReason}'),
+        Text('Karar açıklaması: ${r.publicNotice ?? 'Bu eski kayıt için ayrı bir açıklama bulunmuyor. İtiraz göndererek değerlendirme isteyebilirsin.'}'),
         Text(r.active ? 'Aktif kısıtlama' : 'Kısıtlama sona erdi'),
         Text('Planlanan bitiş: ${r.expiresAt.toLocal()}'),
         if (r.body != null) Text('İtiraz: ${r.body}'),

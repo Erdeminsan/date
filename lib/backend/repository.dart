@@ -77,19 +77,19 @@ class ModerationReport {
 class ModerationSanction {
   ModerationSanction(Map<String,dynamic> data):id=data['id'] as String,reportedName=data['reported_name'] as String,
     reason=data['reason'] as String,expiresAt=DateTime.parse(data['expires_at'] as String),
-    active=data['active'] as bool,liftReason=data['lift_reason'] as String?;
+    active=data['active'] as bool,liftReason=data['lift_reason'] as String?,publicNotice=data['public_notice'] as String?;
   final String id,reportedName,reason;
   final DateTime expiresAt;
   final bool active;
-  final String? liftReason;
+  final String? liftReason,publicNotice;
 }
 class SanctionAppeal {
   SanctionAppeal(Map<String,dynamic> data):id=data['id'] as String,sanctionId=data['sanction_id'] as String,
     appealId=data['appeal_id'] as String?,expiresAt=DateTime.parse(data['expires_at'] as String),
     active=data['active'] as bool,body=data['body'] as String?,decision=data['decision'] as String?,
-    response=data['response'] as String?,displayName=data['display_name'] as String?,internalReason=data['internal_reason'] as String?;
+    response=data['response'] as String?,displayName=data['display_name'] as String?,internalReason=data['internal_reason'] as String?,publicNotice=data['public_notice'] as String?;
   final String id,sanctionId;
-  final String? appealId,body,decision,response,displayName,internalReason;
+  final String? appealId,body,decision,response,displayName,internalReason,publicNotice;
   final DateTime expiresAt;
   final bool active;
 }
@@ -247,14 +247,14 @@ class Backend {
   Future<void> signOutLocal() => client.auth.signOut(scope: SignOutScope.local);
   Future<bool> accountRestricted() async => await client.rpc('account_restricted') as bool;
   Future<FeedPage<SanctionAppeal>> ownSanctions({FeedCursor? before}) async {
-    final data=await client.rpc('own_sanctions',params:{'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    final data=await client.rpc('own_sanctions_v2',params:{'p_before_time':before?.createdAt,'p_before_id':before?.id});
     return decodeFeedPage<SanctionAppeal>(data as List,SanctionAppeal.new);
   }
   Future<void> submitAppeal(String sanctionId,String body) async {
     await client.rpc('submit_sanction_appeal',params:{'p_sanction':sanctionId,'p_body':body});
   }
   Future<FeedPage<SanctionAppeal>> moderationAppeals({bool reviewed=false,FeedCursor? before}) async {
-    final data=await client.rpc('moderation_appeals',params:{'p_reviewed':reviewed,'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    final data=await client.rpc('moderation_appeals_v2',params:{'p_reviewed':reviewed,'p_before_time':before?.createdAt,'p_before_id':before?.id});
     return decodeFeedPage<SanctionAppeal>(data as List,SanctionAppeal.new);
   }
   Future<void> reviewAppeal(String appealId,String decision,String response) async {
@@ -270,14 +270,14 @@ class Backend {
     await client.rpc('review_report',params:{'p_report':reportId,'p_decision':decision,'p_note':note});
   }
 
-  Future<void> suspendReportedAccount(String reportId,int hours,String reason) async {
-    await client.rpc('suspend_reported_account',params:{'p_report':reportId,'p_hours':hours,'p_reason':reason});
+  Future<void> suspendReportedAccount(String reportId,int hours,String reason,String publicNotice) async {
+    await client.rpc('suspend_reported_account',params:{'p_report':reportId,'p_hours':hours,'p_reason':reason,'p_public_notice':publicNotice});
   }
   Future<void> liftAccountSanction(String id,String reason) async {
     await client.rpc('lift_account_sanction',params:{'p_sanction':id,'p_reason':reason});
   }
   Future<FeedPage<ModerationSanction>> moderationSanctions({FeedCursor? before}) async {
-    final data=await client.rpc('moderation_sanctions',params:{'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    final data=await client.rpc('moderation_sanctions_v2',params:{'p_before_time':before?.createdAt,'p_before_id':before?.id});
     return decodeFeedPage<ModerationSanction>(data as List,ModerationSanction.new);
   }
 

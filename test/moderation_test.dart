@@ -5,7 +5,7 @@ import 'package:playmatch/features/moderation_screen.dart';
 class ModerationBackend implements Backend {
   bool allowed=true,reviewed=false,failSave=false,escalated=false,restricted=false;
   int? savedHours;
-  String? sanctionReason,liftReason;
+  String? sanctionReason,liftReason,savedPublicNotice;
   String? savedId,savedDecision,savedNote;
   @override
   String get userId=>'moderator';
@@ -22,9 +22,9 @@ class ModerationBackend implements Backend {
     savedId=reportId;savedDecision=decision;savedNote=note;reviewed=true;
   }
   @override
-  Future<void> suspendReportedAccount(String reportId,int hours,String reason)async{
+  Future<void> suspendReportedAccount(String reportId,int hours,String reason,String publicNotice)async{
     if(failSave)throw StateError('network error');
-    savedId=reportId;savedHours=hours;sanctionReason=reason;restricted=true;
+    savedId=reportId;savedHours=hours;sanctionReason=reason;savedPublicNotice=publicNotice;restricted=true;
   }
   @override
   Future<void> liftAccountSanction(String id,String reason)async{
@@ -35,7 +35,7 @@ class ModerationBackend implements Backend {
   Future<FeedPage<ModerationSanction>> moderationSanctions({FeedCursor? before})async{
     if(!allowed)throw StateError('not authorized');
     return FeedPage([ModerationSanction({'id':'sanction','reported_name':'Target','reason':'Restriction evidence',
-      'expires_at':'2026-10-27T12:00:00Z','active':restricted,'lift_reason':liftReason})],null);
+      'expires_at':'2026-10-27T12:00:00Z','active':restricted,'lift_reason':liftReason,'public_notice':savedPublicNotice})],null);
   }
   @override
   dynamic noSuchMethod(Invocation invocation)=>throw UnimplementedError();
@@ -79,9 +79,12 @@ void main(){
     final b=ModerationBackend()..escalated=true;await open(tester,b);
     await tester.tap(find.text('Süreli kısıtla'));await tester.pumpAndSettle();
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton,'Kısıtlamayı onayla')).onPressed,isNull);
-    await tester.enterText(find.byType(TextField),'Reviewed violation');await tester.pump();
+    await tester.enterText(find.byKey(const ValueKey('internal-reason')),'Reviewed violation');await tester.pump();
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton,'Kısıtlamayı onayla')).onPressed,isNull);
+    await tester.enterText(find.byKey(const ValueKey('public-notice')),'Repeated unwanted contact');await tester.pump();
     await tester.tap(find.text('Kısıtlamayı onayla'));await tester.pumpAndSettle();
-    expect(b.savedId,'report');expect(b.savedHours,24);expect(b.sanctionReason,'Reviewed violation');
+    expect(b.savedId,'report');expect(b.savedHours,24);expect(b.sanctionReason,'Reviewed violation');expect(b.savedPublicNotice,'Repeated unwanted contact');
+    expect(find.text('Kullanıcıya açıklama: Repeated unwanted contact'),findsOneWidget);
     expect(find.text('Aktif kısıtlama'),findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
@@ -106,7 +109,9 @@ void main(){
   testWidgets('uncertain restriction response clears data and requires refresh', (tester)async{
     final b=ModerationBackend()..escalated=true..failSave=true;await open(tester,b);
     await tester.tap(find.text('Süreli kısıtla'));await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField),'Reviewed violation');await tester.pump();
+    await tester.enterText(find.byKey(const ValueKey('internal-reason')),'Reviewed violation');await tester.pump();
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton,'Kısıtlamayı onayla')).onPressed,isNull);
+    await tester.enterText(find.byKey(const ValueKey('public-notice')),'Repeated unwanted contact');await tester.pump();
     await tester.tap(find.text('Kısıtlamayı onayla'));await tester.pumpAndSettle();
     expect(find.textContaining('İşlem doğrulanamadı'),findsOneWidget);expect(find.text('Private report reason'),findsNothing);
     await tester.pumpWidget(const SizedBox());

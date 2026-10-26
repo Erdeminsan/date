@@ -78,7 +78,7 @@ class _ModerationScreenState extends State<ModerationScreen> with WidgetsBinding
     }catch(_){if(mounted&&request==generation){clearAccess();setState(()=>error='Karar doğrulanamadı. Listeyi yenileyerek durumu kontrol et; önceki karar değiştirilemez.');}}
   }
   Future<void> sanctionAction({ModerationReport? report,ModerationSanction? sanction}) async {
-    var hours=24,reason='';final lifting=sanction!=null;dialogOpen=true;
+    var hours=24,reason='',publicNotice='';final lifting=sanction!=null;dialogOpen=true;
     final accepted=await showDialog<bool>(useRootNavigator: false, context:context,builder:(context)=>StatefulBuilder(builder:(context,update)=>AlertDialog(
       title:Text(lifting?'Kısıtlamayı kaldır':'Hesabı süreli kısıtla'),
       content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
@@ -87,9 +87,13 @@ class _ModerationScreenState extends State<ModerationScreen> with WidgetsBinding
           DropdownMenuItem(value:24,child:Text('24 saat')),DropdownMenuItem(value:168,child:Text('7 gün')),
         ],onChanged:(v)=>update(()=>hours=v!)),
         Text(lifting?'Başka aktif kısıtlama varsa hesap kapalı kalır.':'Bu hesap keşif, eşleşme, sohbet ve oyun işlemlerine erişemeyecek.'),
-        TextField(maxLength:1000,maxLines:3,onChanged:(v)=>update(()=>reason=v),decoration:const InputDecoration(labelText:'İşlem gerekçesi (en az 5 karakter)')),
+        TextField(key:const ValueKey('internal-reason'),maxLength:1000,maxLines:3,onChanged:(v)=>update(()=>reason=v),decoration:const InputDecoration(labelText:'İç gerekçe (kullanıcıya gösterilmez)')),
+        if(!lifting)...[
+          const Text('Aşağıdaki açıklama kullanıcıya gösterilir. Şikâyetçi kimliğini ve özel inceleme notlarını paylaşma.'),
+          TextField(key:const ValueKey('public-notice'),maxLength:1000,maxLines:3,onChanged:(v)=>update(()=>publicNotice=v),decoration:const InputDecoration(labelText:'Kullanıcıya açıklama (en az 5 karakter)')),
+        ],
       ])),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Vazgeç')),
-        FilledButton(onPressed:reason.trim().length<5?null:()=>Navigator.pop(context,true),child:Text(lifting?'Kaldırmayı onayla':'Kısıtlamayı onayla'))],
+        FilledButton(onPressed:reason.trim().length<5||(!lifting&&publicNotice.trim().length<5)?null:()=>Navigator.pop(context,true),child:Text(lifting?'Kaldırmayı onayla':'Kısıtlamayı onayla'))],
     )));
     dialogOpen=false;
     if(accepted!=true||!mounted||!foreground||busy)return;
@@ -97,7 +101,7 @@ class _ModerationScreenState extends State<ModerationScreen> with WidgetsBinding
     try{
       if(widget.backend.userId!=owner)throw StateError('Session changed');
       if(lifting){await widget.backend.liftAccountSanction(sanction.id,reason.trim()).timeout(const Duration(seconds:6));}
-      else{await widget.backend.suspendReportedAccount(report!.id,hours,reason.trim()).timeout(const Duration(seconds:6));}
+      else{await widget.backend.suspendReportedAccount(report!.id,hours,reason.trim(),publicNotice.trim()).timeout(const Duration(seconds:6));}
       if(!mounted||request!=generation||!foreground)return;
       setState((){busy=false;status='sanctions';});await load();
     }catch(_){if(mounted&&request==generation){clearAccess();setState(()=>error='İşlem doğrulanamadı. Kısıtlamalar listesini yenileyerek kontrol et; süre otomatik uzatılmaz.');}}
@@ -124,7 +128,7 @@ class _ModerationScreenState extends State<ModerationScreen> with WidgetsBinding
         else TextButton(onPressed:busy?null:()=>review(r),child:const Text('İncele')),
       ]))),
       for(final s in sanctions)Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text(s.reportedName),Text(s.reason),Text(s.active?'Aktif kısıtlama':'Kısıtlama sona erdi'),
+        Text(s.reportedName),Text('İç gerekçe: ${s.reason}'),Text('Kullanıcıya açıklama: ${s.publicNotice ?? 'Bu eski kayıt için ayrı açıklama bulunmuyor.'}'),Text(s.active?'Aktif kısıtlama':'Kısıtlama sona erdi'),
         Text('Bitiş: ${s.expiresAt.toLocal()}'),if(s.liftReason!=null)Text('Kaldırma gerekçesi: ${s.liftReason}'),
         if(s.active)TextButton(onPressed:busy?null:()=>sanctionAction(sanction:s),child:const Text('Kısıtlamayı kaldır')),
       ]))),

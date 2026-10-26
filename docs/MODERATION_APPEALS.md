@@ -10,8 +10,9 @@ kısıtlama varsa keşif yerine hesap durumu/itiraz ekranı açılır. Kullanıc
 kısıtlamalarının planlanan bitişini, aktiflik durumunu, gönderdiği itirazı ve
 kendisine yazılmış yanıtı görür. Rapor metni, şikâyetçi kimliği, moderatörün iç
 gerekçesi veya başka kullanıcı bilgisi self-service yanıtına eklenmez.
-Kullanıcıya ilk aşamada genel inceleme/kısıtlama açıklaması verilir; ayrıntılı,
-kullanıcıya özel ilk karar gerekçesi ayrı bir alan olarak henüz yoktur.
+Yeni kararlarda kullanıcıya özel açıklama public_notice alanında tutulur ve
+hesap durumu kartında gösterilir. İç notlardan otomatik kopyalama yapılmaz.
+Açıklaması olmayan eski kayıtlar bunu açıkça belirtir; itiraz yolu açık kalır.
 
 Her kısıtlamaya bir itiraz: 5..2000 karakter, gönderildikten sonra değişmez.
 Aynı metni tekrar gönderme ilk kaydı döndürür; farklı metin çatışma verir.
@@ -78,6 +79,35 @@ moderatör yanıtı, yetki kaybı, belirsiz kayıt, açık ekran/diyalog temizli
 arka plandan gecikmiş yanıt ve bağlantı hatası. Çok bağlantılı yarış, iki fiziksel
 iPhone ve gerçek operatörle uçtan uca kabul ayrıca yapılmalıdır.
 
-Sürüm öncesi açık: gerçek operatör seçimi, kullanıcıya özel ilk karar gerekçesi,
-mesaj/fotoğraf kanıtı, saklama/itiraz operasyon politikası, bildirim tercihi,
+Sürüm öncesi açık: gerçek operatör seçimi, mesaj/fotoğraf kanıtı, saklama/itiraz operasyon politikası, bildirim tercihi,
 gerçek SMTP ve cihaz kabulü, imzalı arşiv/TestFlight dağıtımı.
+
+
+## Kullanıcıya karar açıklaması — 26 Ekim güncellemesi
+
+20261026132158_moderation_decision_notices geliştirme ortamına uygulandı.
+Yeni kısıtlamanın iç gerekçesi ile public_notice birbirinden ayrı zorunlu
+5..1000 karakter alanlardır. Editör hangisinin kullanıcıya gösterileceğini
+belirtir ve şikâyetçi kimliği/özel inceleme notu paylaşılmamasını hatırlatır.
+Otomatik kişisel veri ayıklama yapılmaz; operatör yazdığı metinden sorumludur.
+
+Yeni dört parametreli suspend_reported_account açıklamayı kısıtlama ile aynı
+transaction'da yazar. İdempotent tekrar açıklamayı da eşleştirir; değiştirilmiş
+tekrar SANCTION_CONFLICT olur. Açıklama düzenleme RPC'si yoktur. Kaldırma veya
+itiraz kararı ilk açıklamayı değiştirmez. Rapor/şikâyetçi silinince açıklama
+kısıtlama ile korunur; hedef hesabı silinince aynı mevcut cascade uygulanır.
+
+Eski üç parametreli kısıtlama isteği yetki kontrolünden sonra
+PUBLIC_NOTICE_REQUIRED ile reddedilir; eski istemciler yeni kısıtlama vermek
+için güncellenmelidir. Eski okuma RPC'leri korunur. Yeni istemci own_sanctions_v2,
+moderation_sanctions_v2 ve moderation_appeals_v2 kullanır. Eski tablo kayıtları
+null kalır; private reason hiçbir koşulda kullanıcı metni için fallback değildir.
+Self-service yanıtlarında şikâyetçi, rapor metni veya iç not görünmez. Yetkili
+moderatör iki alanı birlikte görerek itirazı inceleyebilir. 20+1 keyset sayfalama
+ve önceki rol/sahiplik kontrolleri korunur.
+
+Testler: boş/null/kısa/uzun açıklama reddi, eski yazma yolunun kapanması,
+yazmanın atomikliği, aynı açıklama ile retry, farklı açıklama çatışması,
+self-service gizliliği, moderatör görünürlüğü, rapor silinmesinden sonra açıklama,
+mevcut v2 sayfalama sözleşmeleri. Arayüz testi iç gerekçenin tek başına onay
+butonunu açmadığını ve eski kaydın gizli nota fallback yapmadığını doğrular.
