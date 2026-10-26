@@ -444,6 +444,44 @@ try {
     assert.equal((await db.query('select * from public.reports')).rows.length,1);
     await asUser('b'); assert.equal((await db.query('select * from public.reports')).rows.length,0);
   });
+  await check('moderation role gates private reports and records immutable, idempotent decisions', async () => {
+    await asUser('a');const report=(await scalar('select id from public.reports limit 1')).id;
+    assert.equal((await scalar('select public.moderation_access() as allowed')).allowed,false);
+    await assert.rejects(()=>db.query('select * from public.moderation_reports()'),/MODERATOR_REQUIRED/);
+    await assert.rejects(()=>db.query("select public.review_report($1,'dismissed','A reason')",[report]),/MODERATOR_REQUIRED/);
+    await assert.rejects(()=>db.query('insert into app_private.moderators(user_id) values($1)',[ids.a]),/permission denied/);
+    await db.exec('reset role');await db.query('insert into app_private.moderators(user_id) values($1)',[ids.c]);
+    await asUser('c');assert.equal((await scalar('select public.moderation_access() as allowed')).allowed,true);
+    const rows=(await db.query('select * from public.moderation_reports()')).rows;
+    assert.equal(rows.length,1);assert.equal(rows[0].id,report);assert.equal('birth_date' in rows[0],false);
+    for(const [decision,note] of [['ban','Valid note'],['dismissed','x'],[null,'Valid note']])
+      await assert.rejects(()=>db.query('select public.review_report($1,$2,$3)',[report,decision,note]),/INVALID_REVIEW/);
+    await db.query("select public.review_report($1,'escalated','Needs further investigation')",[report]);
+    await db.query("select public.review_report($1,'escalated','Needs further investigation')",[report]);
+    await assert.rejects(()=>db.query("select public.review_report($1,'dismissed','Different reason')",[report]),/REVIEW_CONFLICT/);
+    assert.equal((await db.query('select * from public.moderation_reports()')).rows.length,0);
+    const reviewed=(await db.query("select * from public.moderation_reports('reviewed')")).rows;
+    assert.equal(reviewed.length,1);assert.equal(reviewed[0].review_note,'Needs further investigation');
+    await assert.rejects(()=>db.query('delete from app_private.report_reviews'),/permission denied/);
+    await asUser('a');assert.equal((await db.query('select * from public.reports')).rows.length,1);
+    await assert.rejects(()=>db.query('select * from app_private.report_reviews'),/permission denied/);
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.report_reviews')).n,1);
+    await db.query('insert into app_private.moderators(user_id) values($1)',[ids.a]);
+    await asUser('a');assert.equal((await db.query("select * from public.moderation_reports('reviewed')")).rows.length,0);
+    await assert.rejects(()=>db.query("select public.review_report($1,'dismissed','My own case')",[report]),/REPORT_UNAVAILABLE/);
+    await db.exec('reset role');
+    const fixtures=(await db.query("insert into public.reports(reporter_id,reported_id,reason,created_at) select $1,$2,'Queue fixture','2020-01-01' from generate_series(1,25) returning id",[ids.a,ids.b])).rows.map(r=>r.id);
+    await asUser('c');
+    const first=(await db.query("select *,created_at::text as cursor_time from public.moderation_reports()")).rows;
+    assert.equal(first.length,21);const last=first[19];
+    const next=(await db.query("select * from public.moderation_reports('pending',$1,$2)",[last.cursor_time,last.id])).rows;
+    assert.equal(next.length,5);assert.equal(new Set([...first.slice(0,20),...next].map(r=>r.id)).size,25);
+    await db.exec('reset role');await db.query('delete from public.reports where id=any($1::uuid[])',[fixtures]);
+    await db.exec('reset role');await db.query('delete from app_private.moderators');
+    await asUser('c');await assert.rejects(()=>db.query("select * from public.moderation_reports('reviewed')"),/MODERATOR_REQUIRED/);
+    await asUser('a');
+  });
   await check('hidden profile cannot receive or send new likes', async () => {
     await asUser('c');
     await db.query('select public.save_profile($1,$2,$3,$4,false)',['Carol','2000-01-01','Private city','Private interests']);
@@ -602,6 +640,8 @@ try {
     await assert.rejects(() => db.exec('select * from public.profiles'), /permission denied/);
     await assert.rejects(() => db.query('select public.match_unlocks($1)',[ids.a]), /permission denied/);
     await assert.rejects(() => db.query('select public.get_discovery_preferences()'), /permission denied/);
+    await assert.rejects(() => db.query('select public.moderation_access()'), /permission denied/);
+    await assert.rejects(() => db.query('select * from public.moderation_reports()'), /permission denied/);
     await assert.rejects(() => db.query('select public.set_discovery_preferences(18,null)'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.discover_page()'), /permission denied/);
     await assert.rejects(() => db.exec('select * from public.matches_page()'), /permission denied/);

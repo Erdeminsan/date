@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../backend/repository.dart';
+import 'moderation_screen.dart';
 
 class AccountSettings extends StatefulWidget {
   const AccountSettings({super.key, required this.backend});
@@ -13,11 +14,21 @@ class _AccountSettingsState extends State<AccountSettings> {
   List<Person> blocked = [];
   bool loading = true, busy = false, deleted = false;
   String? error;
+  bool canModerate = false;
 
   @override
   void initState() {
     super.initState();
     load();
+    loadModerationAccess();
+  }
+
+  Future<void> loadModerationAccess() async {
+    try {
+      final owner = widget.backend.userId;
+      final allowed = await widget.backend.moderationAccess().timeout(const Duration(seconds: 6));
+      if (mounted) setState(() => canModerate = allowed && widget.backend.userId == owner);
+    } catch (_) { if (mounted) setState(() => canModerate = false); }
   }
 
   Future<void> load() async {
@@ -124,6 +135,10 @@ class _AccountSettingsState extends State<AccountSettings> {
                 child: const Text('Giriş ekranına dön'),
               ),
             ] else ...[
+              if (canModerate) OutlinedButton(onPressed: busy ? null : () async {
+                await Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => ModerationScreen(backend: widget.backend)));
+                if (mounted) loadModerationAccess();
+              }, child: const Text('Şikâyet inceleme')),
               const Text(
                 'Engellenen kişiler',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),

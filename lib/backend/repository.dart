@@ -68,6 +68,12 @@ class GameRoom {
   final DateTime expiresAt;
   bool get active => ['invited','accepted','countdown','running','awaiting_result'].contains(status);
 }
+class ModerationReport {
+  ModerationReport(Map<String,dynamic> data):id=data['id'] as String,reporterName=data['reporter_name'] as String,
+    reportedName=data['reported_name'] as String,reason=data['reason'] as String,decision=data['decision'] as String?,note=data['review_note'] as String?;
+  final String id,reporterName,reportedName,reason;
+  final String? decision,note;
+}
 class DiscoveryPreferences {
   DiscoveryPreferences(Map<String,dynamic> data):minAge=data['min_age'] as int,maxAge=data['max_age'] as int?;
   final int minAge;
@@ -217,6 +223,15 @@ class Backend {
       'p_match': matchId, 'p_action': action, 'p_room': roomId,
     });
     return RoomSnapshot(Map<String, dynamic>.from(data as Map));
+  }
+
+  Future<bool> moderationAccess() async => await client.rpc('moderation_access') as bool;
+  Future<FeedPage<ModerationReport>> moderationReports({String status='pending',FeedCursor? before}) async {
+    final data=await client.rpc('moderation_reports',params:{'p_status':status,'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    return decodeFeedPage<ModerationReport>(data as List,ModerationReport.new);
+  }
+  Future<void> reviewReport(String reportId,String decision,String note) async {
+    await client.rpc('review_report',params:{'p_report':reportId,'p_decision':decision,'p_note':note});
   }
 
   Future<DiscoveryPreferences> discoveryPreferences() async => DiscoveryPreferences(Map<String,dynamic>.from(await client.rpc('get_discovery_preferences') as Map));
