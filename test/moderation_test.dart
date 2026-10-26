@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playmatch/backend/repository.dart';
 import 'package:playmatch/features/moderation_screen.dart';
+import 'package:playmatch/features/message_evidence_view.dart';
 class ModerationBackend implements Backend {
   bool allowed=true,reviewed=false,failSave=false,escalated=false,restricted=false;
   int? savedHours;
@@ -14,7 +15,7 @@ class ModerationBackend implements Backend {
   @override
   Future<FeedPage<ModerationReport>> moderationReports({String status='pending',FeedCursor? before})async{
     if(!allowed)throw StateError('not authorized');
-    return FeedPage(reviewed?[]:[ModerationReport({'id':'report','reporter_name':'Reporter','reported_name':'Target','reason':'Private report reason','created_at':'2026-01-01','decision':escalated?'escalated':null,'review_note':null})],null);
+    return FeedPage(reviewed?[]:[ModerationReport({'id':'report','reporter_name':'Reporter','reported_name':'Target','reason':'Private report reason','created_at':'2026-01-01','decision':escalated?'escalated':null,'review_note':null,'message_body':'Captured message','message_created_at':'2026-01-01T12:00:00Z','evidence_captured_at':'2026-01-02T12:00:00Z'})],null);
   }
   @override
   Future<void> reviewReport(String reportId,String decision,String note)async{
@@ -51,6 +52,7 @@ void main(){
   });
   testWidgets('review requires a reason and sends the selected case only', (tester)async{
     final b=ModerationBackend();await open(tester,b);
+    expect(find.byType(MessageEvidenceView),findsOneWidget);
     await tester.tap(find.text('İncele'));await tester.pumpAndSettle();
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton,'Kararı kaydet')).onPressed,isNull);
     await tester.enterText(find.byType(TextField),'Reviewed evidence');await tester.pump();

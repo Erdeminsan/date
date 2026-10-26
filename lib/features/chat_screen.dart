@@ -17,6 +17,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final messages = <String,ChatMessage>{};
   Timer? timer;
   String? newest, oldest, error, sendError, requestId, pendingBody;
+  int generation = 0;
+  bool reportDialogOpen = false, reporting = false;
+  String? reportStatus;
+  final reportDrafts = <String,String>{};
   bool reading = false, sending = false, hasOlder = false, foreground = true;
   @override
   void initState() {
@@ -25,28 +29,36 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     read();
     timer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (foreground && error == null && ModalRoute.of(context)?.isCurrent == true) read();
+      if (foreground && error == null && (reportDialogOpen || ModalRoute.of(context)?.isCurrent == true)) read();
     });
   }
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     foreground = state == AppLifecycleState.resumed;
-    if (foreground) read();
+    if (!foreground) clearHistory();
+    else read();
   }
   @override
   void dispose() {
-    timer?.cancel(); input.dispose(); WidgetsBinding.instance.removeObserver(this);
+    generation++; timer?.cancel(); input.dispose(); WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
+  void clearHistory({String? message}) {
+    generation++;
+    if(reportDialogOpen){reportDialogOpen=false;Navigator.of(context).pop();}
+    setState((){messages.clear();newest=null;oldest=null;hasOlder=false;reading=false;
+      reporting=false;reportDrafts.clear();reportStatus=null;error=message;});
+  }
   Future<void> read({bool older = false}) async {
-    if (reading) return;
+    if (reading || !foreground) return;
+    final request = generation;
     setState(() { reading = true; error = null; });
     final initial = newest == null;
     try {
       if (widget.backend.userId != owner) throw StateError('Session changed');
       final page = await widget.backend.messages(widget.connection.id,
-        before: older ? oldest : null, after: older || initial ? null : newest);
-      if (!mounted) return;
+        before: older ? oldest : null, after: older || initial ? null : newest).timeout(const Duration(seconds:6));
+      if (!mounted || request != generation || !foreground) return;
       if (widget.backend.userId != owner) throw StateError('Session changed');
       setState(() {
         for (final m in page.messages) { messages[m.id] = m; }
@@ -61,15 +73,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         }
       });
     } catch (e) {
-      if (mounted) setState(() {
-        error = friendlyError(e); messages.clear(); newest = null; oldest = null; hasOlder = false;
-      });
+      if (mounted && request == generation) clearHistory(message:friendlyError(e));
     } finally {
-      if (mounted) setState(() => reading = false);
+      if (mounted && request == generation) setState(() => reading = false);
     }
   }
   Future<void> send() async {
-    if (sending) return;
+    if (sending || !foreground) return;
+    final request = generation;
     final body = pendingBody ?? input.text.trim();
     if (body.isEmpty) return;
     requestId ??= newMessageRequestId(); pendingBody = body;
@@ -77,7 +88,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     try {
       if (widget.backend.userId != owner) throw StateError('Session changed');
       await widget.backend.sendMessage(widget.connection.id, requestId!, body);
-      if (!mounted) return;
+      if (!mounted || request != generation || !foreground) return;
+      if (widget.backend.userId != owner) throw StateError('Session changed');
       setState(() { requestId = null; pendingBody = null; input.clear(); });
       await read();
     } catch (e) {
@@ -85,6 +97,40 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     } finally {
       if (mounted) setState(() => sending = false);
     }
+  }
+  Future<void> reportMessage(ChatMessage message) async {
+    if(reporting || !foreground || error!=null || message.senderId==owner)return;
+    var reason=reportDrafts[message.id]??'';
+    reportDialogOpen=true;
+    final opened=generation;
+    final accepted=await showDialog<bool>(useRootNavigator:false,context:context,builder:(context)=>StatefulBuilder(builder:(context,update)=>AlertDialog(
+      title:const Text('Mesajı şikâyet et'),
+      content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text(message.body),
+        const SizedBox(height:12),
+        const Text('Bu mesajın bir kopyası inceleme için şikâyete eklenir. Eşleşmeyi kaldırsan veya engellesen de şikâyet kaydıyla birlikte saklanır.'),
+        TextFormField(key:const ValueKey('message-report-reason'),initialValue:reason,maxLength:1000,maxLines:3,
+          onChanged:(v)=>update(()=>reason=v),decoration:const InputDecoration(labelText:'Şikâyet gerekçesi (en az 5 karakter)')),
+      ])),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Vazgeç')),
+        FilledButton(onPressed:reason.trim().length<5?null:()=>Navigator.pop(context,true),child:const Text('Şikâyeti gönder'))],
+    )));
+    reportDialogOpen=false;
+    if(accepted!=true || !mounted || !foreground || opened!=generation)return;
+    reportDrafts[message.id]=reason.trim();
+    setState((){reporting=true;reportStatus=null;});
+    try{
+      if(widget.backend.userId!=owner)throw StateError('Session changed');
+      await widget.backend.reportMessage(widget.connection.id,message.id,reason.trim()).timeout(const Duration(seconds:6));
+      if(!mounted || opened!=generation || !foreground)return;
+      if(widget.backend.userId!=owner)throw StateError('Session changed');
+      reportDrafts.remove(message.id);
+      setState(()=>reportStatus='Şikâyetin seçtiğin mesajla birlikte kaydedildi.');
+    }catch(_){
+      if(mounted && opened==generation){
+        setState(()=>reportStatus='Şikâyet doğrulanamadı. Aynı mesaj ve gerekçeyle tekrar deneyebilirsin.');
+        await read();
+      }
+    }finally{if(mounted && opened==generation)setState(()=>reporting=false);}
   }
   @override
   Widget build(BuildContext context) {
@@ -105,8 +151,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             if (index == ordered.length) return TextButton(onPressed: reading ? null : () => read(older: true), child: const Text('Önceki mesajlar'));
             final m = ordered[index];
             return Align(alignment: m.senderId == owner ? Alignment.centerRight : Alignment.centerLeft,
-              child: Card(child: Padding(padding: const EdgeInsets.all(12), child: Text(m.body))));
+              child: Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Text(m.body),
+                if(m.senderId!=owner)IconButton(key:ValueKey('report-message-${m.id}'),tooltip:'Mesajı şikâyet et',
+                  onPressed:reporting||error!=null?null:()=>reportMessage(m),icon:const Icon(Icons.flag_outlined)),
+              ]))));
           })),
+        if(reportStatus!=null)Padding(padding:const EdgeInsets.all(8),child:Text(reportStatus!)),
         if (sendError != null) Padding(padding: const EdgeInsets.all(8), child: Text(sendError!)),
         Padding(padding: const EdgeInsets.all(12), child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Expanded(child: TextField(controller: input, readOnly: requestId != null || sending,

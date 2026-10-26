@@ -144,3 +144,11 @@ Keşfet yaş tercihleri: [DISCOVERY_PREFERENCES.md](DISCOVERY_PREFERENCES.md).
   kısıtlama vermek için güncellenmelidir. Ayrıntılar MODERATION_APPEALS.md'de.
 - Mesaj/fotoğraf kanıtı, gerçek operatör, saklama/bildirim operasyonları, gerçek
   cihaz kabulü ve imzalı TestFlight dağıtımı sürüm öncesi açık işlerdir.
+
+### 26 Ekim: şikâyete mesaj kanıtı
+- Kullanıcı karşı tarafın seçili mesajını gerekçeyle şikâyet edebilir. Sunucu
+  üyelik/mesaj sahipliğini doğrular ve metni kaynaktan alır; aynı rapor tekrarı
+  idempotenttir. Moderatör şikâyet ve itiraz ekranlarında kanıtı görür.
+- Unmatch/block kanıtı silmez; rapor/hesap silme mevcut cascade kurallarını izler.
+  Ayrıntılar ve saklama sınırlamaları MESSAGE_REPORT_EVIDENCE.md'de.
+- Fotoğraf kanıtı ve gerçek operatör/cihaz/saklama/bildirim/dağıtım işleri açık.

@@ -95,3 +95,9 @@ testi değildir; fiziksel cihaz/operatör kabulü ayrıca yapılmalıdır.
 Kısıtlama durumu ve itiraz ekranları 20261026084939_moderation_appeals ile
 bağlandı. Yukarıdaki tarihsel açık işlerin güncel durumu ve sınırlamalar için
 MODERATION_APPEALS.md'ye bakın. Operatör ataması ve bildirimler hâlâ yoktur.
+
+### Mesaj kanıtı
+
+Seçili mesaj şikâyetleri artık sunucudan alınan metin ve zaman kopyasıyla
+incelenebilir. Şikâyet ve itiraz ekranlarına bağlandı; fotoğraf kanıtı açık.
+Yetki, veri ömrü ve kabul ayrıntıları MESSAGE_REPORT_EVIDENCE.md'de.

@@ -68,11 +68,19 @@ class GameRoom {
   final DateTime expiresAt;
   bool get active => ['invited','accepted','countdown','running','awaiting_result'].contains(status);
 }
+class MessageEvidence {
+  const MessageEvidence(this.body,this.sentAt,this.capturedAt);
+  final String body;
+  final DateTime sentAt,capturedAt;
+  static MessageEvidence? fromJson(Map<String,dynamic> data) => data['message_body']==null ? null : MessageEvidence(
+    data['message_body'] as String,DateTime.parse(data['message_created_at'] as String),DateTime.parse(data['evidence_captured_at'] as String));
+}
 class ModerationReport {
   ModerationReport(Map<String,dynamic> data):id=data['id'] as String,reporterName=data['reporter_name'] as String,
-    reportedName=data['reported_name'] as String,reason=data['reason'] as String,decision=data['decision'] as String?,note=data['review_note'] as String?;
+    reportedName=data['reported_name'] as String,reason=data['reason'] as String,decision=data['decision'] as String?,note=data['review_note'] as String?,evidence=MessageEvidence.fromJson(data);
   final String id,reporterName,reportedName,reason;
   final String? decision,note;
+  final MessageEvidence? evidence;
 }
 class ModerationSanction {
   ModerationSanction(Map<String,dynamic> data):id=data['id'] as String,reportedName=data['reported_name'] as String,
@@ -87,8 +95,9 @@ class SanctionAppeal {
   SanctionAppeal(Map<String,dynamic> data):id=data['id'] as String,sanctionId=data['sanction_id'] as String,
     appealId=data['appeal_id'] as String?,expiresAt=DateTime.parse(data['expires_at'] as String),
     active=data['active'] as bool,body=data['body'] as String?,decision=data['decision'] as String?,
-    response=data['response'] as String?,displayName=data['display_name'] as String?,internalReason=data['internal_reason'] as String?,publicNotice=data['public_notice'] as String?;
+    response=data['response'] as String?,displayName=data['display_name'] as String?,internalReason=data['internal_reason'] as String?,publicNotice=data['public_notice'] as String?,evidence=MessageEvidence.fromJson(data);
   final String id,sanctionId;
+  final MessageEvidence? evidence;
   final String? appealId,body,decision,response,displayName,internalReason,publicNotice;
   final DateTime expiresAt;
   final bool active;
@@ -254,7 +263,7 @@ class Backend {
     await client.rpc('submit_sanction_appeal',params:{'p_sanction':sanctionId,'p_body':body});
   }
   Future<FeedPage<SanctionAppeal>> moderationAppeals({bool reviewed=false,FeedCursor? before}) async {
-    final data=await client.rpc('moderation_appeals_v2',params:{'p_reviewed':reviewed,'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    final data=await client.rpc('moderation_appeals_v3',params:{'p_reviewed':reviewed,'p_before_time':before?.createdAt,'p_before_id':before?.id});
     return decodeFeedPage<SanctionAppeal>(data as List,SanctionAppeal.new);
   }
   Future<void> reviewAppeal(String appealId,String decision,String response) async {
@@ -263,7 +272,7 @@ class Backend {
 
   Future<bool> moderationAccess() async => await client.rpc('moderation_access') as bool;
   Future<FeedPage<ModerationReport>> moderationReports({String status='pending',FeedCursor? before}) async {
-    final data=await client.rpc('moderation_reports',params:{'p_status':status,'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    final data=await client.rpc('moderation_reports_v2',params:{'p_status':status,'p_before_time':before?.createdAt,'p_before_id':before?.id});
     return decodeFeedPage<ModerationReport>(data as List,ModerationReport.new);
   }
   Future<void> reviewReport(String reportId,String decision,String note) async {
@@ -349,6 +358,10 @@ class Backend {
         response.data['deleted'] != true) {
       throw StateError('Account deletion was not confirmed');
     }
+  }
+
+  Future<void> reportMessage(String matchId,String messageId,String reason) async {
+    await client.rpc('report_message',params:{'p_match':matchId,'p_message':messageId,'p_reason':reason});
   }
 
   Future<void> report(String id, String reason) async {

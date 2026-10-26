@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../backend/repository.dart';
 import 'account_settings.dart' show DeleteAccountDialog;
+import 'message_evidence_view.dart';
 
 class AppealsScreen extends StatefulWidget {
   const AppealsScreen({super.key, required this.backend, this.moderator = false, this.restricted = false});
@@ -137,6 +138,7 @@ class _AppealsScreenState extends State<AppealsScreen> with WidgetsBindingObserv
       if (!busy && error == null && rows.isEmpty) const Text('Bu listede kayıt yok.'),
       for (final r in rows) Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (r.displayName != null) Text(r.displayName!),
+        if (widget.moderator && r.evidence != null) MessageEvidenceView(evidence: r.evidence!),
         if (widget.moderator && r.internalReason != null) Text('İç gerekçe: ${r.internalReason}'),
         Text('Karar açıklaması: ${r.publicNotice ?? 'Bu eski kayıt için ayrı bir açıklama bulunmuyor. İtiraz göndererek değerlendirme isteyebilirsin.'}'),
         Text(r.active ? 'Aktif kısıtlama' : 'Kısıtlama sona erdi'),

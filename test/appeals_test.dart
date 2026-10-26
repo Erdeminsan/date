@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:playmatch/backend/repository.dart';
 import 'package:playmatch/features/account_access_gate.dart';
 import 'package:playmatch/features/appeals_screen.dart';
+import 'package:playmatch/features/message_evidence_view.dart';
 
 class AppealBackend implements Backend {
   bool restricted = true, allowed = true, submitted = false, failSave = false;
@@ -23,6 +24,7 @@ class AppealBackend implements Backend {
     'active': restricted, 'body': submitted || moderator ? 'Please reconsider' : null,
     'decision': savedDecision, 'response': response, 'display_name': moderator ? 'Target' : null,
     'internal_reason': 'Private evidence', 'public_notice': publicNotice,
+    'message_body':'Captured private message','message_created_at':'2026-01-01T12:00:00Z','evidence_captured_at':'2026-01-02T12:00:00Z',
   });
   @override
   Future<FeedPage<SanctionAppeal>> ownSanctions({FeedCursor? before}) async => FeedPage([row()], null);
@@ -54,6 +56,7 @@ void main() {
   testWidgets('self appeal requires text and submits only the owned sanction', (tester) async {
     final b = AppealBackend(); await open(tester, b);
     expect(find.textContaining('Private evidence'), findsNothing);
+    expect(find.byType(MessageEvidenceView), findsNothing);
     expect(find.text('Karar açıklaması: Repeated unwanted contact'), findsOneWidget);
     await tester.tap(find.text('İtiraz et')); await tester.pumpAndSettle();
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'İtirazı gönder')).onPressed, isNull);
@@ -73,6 +76,9 @@ void main() {
   });
   testWidgets('moderator acceptance sends a user-visible response', (tester) async {
     final b = AppealBackend(); await open(tester, b, moderator: true);
+    expect(find.byType(MessageEvidenceView), findsOneWidget);
+    await tester.ensureVisible(find.text('İtirazı incele'));
+    await tester.ensureVisible(find.text('İtirazı incele'));
     await tester.tap(find.text('İtirazı incele')); await tester.pumpAndSettle();
     await tester.tap(find.byType(DropdownButton<String>)); await tester.pumpAndSettle();
     await tester.tap(find.text('İtirazı kabul et').last); await tester.pumpAndSettle();
@@ -83,6 +89,7 @@ void main() {
   });
   testWidgets('revoked moderator access clears appeal data and open dialog', (tester) async {
     final b = AppealBackend(); await open(tester, b, moderator: true);
+    await tester.ensureVisible(find.text('İtirazı incele'));
     await tester.tap(find.text('İtirazı incele')); await tester.pumpAndSettle(); b.allowed = false;
     await tester.pump(const Duration(seconds: 5)); await tester.pumpAndSettle();
     expect(find.text('İtiraz kararı'), findsNothing); expect(find.textContaining('Private evidence'), findsNothing);

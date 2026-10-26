@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../backend/repository.dart';
 import 'appeals_screen.dart';
+import 'message_evidence_view.dart';
 class ModerationScreen extends StatefulWidget {
   const ModerationScreen({super.key,required this.backend});
   final Backend backend;
@@ -124,6 +125,7 @@ class _ModerationScreenState extends State<ModerationScreen> with WidgetsBinding
       if(!busy&&error==null&&rows.isEmpty&&sanctions.isEmpty)Text(status=='sanctions'?'Kısıtlama kaydı yok.':'Bu listede şikâyet yok.'),
       for(final r in rows)Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text('${r.reporterName} → ${r.reportedName}'),Text(r.reason),
+        if(r.evidence!=null)MessageEvidenceView(evidence:r.evidence!),
         if(r.decision!=null)...[Text(r.decision=='dismissed'?'İşlem gerekmiyor':'İleri inceleme gerekli'),Text(r.note??''),if(r.decision=='escalated')TextButton(onPressed:busy?null:()=>sanctionAction(report:r),child:const Text('Süreli kısıtla'))]
         else TextButton(onPressed:busy?null:()=>review(r),child:const Text('İncele')),
       ]))),
