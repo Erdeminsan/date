@@ -74,7 +74,7 @@ class _ProfilePhotoEditorState extends State<ProfilePhotoEditor> {
   Future<void> remove() async {
     if (busy) return;
     final owner = widget.backend.userId;
-    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+    final confirmed = await showDialog<bool>(useRootNavigator: false, context: context, builder: (context) => AlertDialog(
       title: const Text('Profil fotoğrafını sil?'),
       actions: [TextButton(onPressed: () => Navigator.pop(context,false), child: const Text('Vazgeç')),
         FilledButton(onPressed: () => Navigator.pop(context,true), child: const Text('Sil'))],

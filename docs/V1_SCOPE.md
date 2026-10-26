@@ -128,3 +128,11 @@ Keşfet yaş tercihleri: [DISCOVERY_PREFERENCES.md](DISCOVERY_PREFERENCES.md).
 - Oyun sonuç servisinde JWT subject olmadan katılımcı doğrulaması düzeltildi.
 - Kullanıcı kısıtlama durumu/itiraz ekranı, bildirim ve gerçek operatör ataması
   hâlâ açık; TestFlight için tamamlanmış kabul edilmemeli.
+
+### 26 Ekim: kullanıcı itiraz paketi
+- Hesap erişim kapısı, kısıtlı kullanıcı ekranı, kendi kayıtlarını/yanıtlarını
+  görme ve değiştirilemeyen tek itiraz gönderme eklendi.
+- Moderatör itiraz kuyruğu ve kullanıcıya açık yanıt eklendi; kabul ile ilgili
+  kısıtlama atomik kaldırılır. Diğer aktif kayıtlar korunur.
+- Ayrıntılar: MODERATION_APPEALS.md. İlk karar için kullanıcıya özel gerekçe,
+  operatör/kanıt/retention/bildirim ve gerçek cihaz/TestFlight kabulü hâlâ açık.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../backend/repository.dart';
 import 'moderation_screen.dart';
+import 'appeals_screen.dart';
 
 class AccountSettings extends StatefulWidget {
   const AccountSettings({super.key, required this.backend});
@@ -47,7 +48,7 @@ class _AccountSettingsState extends State<AccountSettings> {
   }
 
   Future<void> unblock(Person person) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showDialog<bool>(useRootNavigator: false,
       context: context,
       builder:
           (context) => AlertDialog(
@@ -103,7 +104,7 @@ class _AccountSettingsState extends State<AccountSettings> {
   }
 
   Future<void> deleteAccount() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showDialog<bool>(useRootNavigator: false,
       context: context,
       barrierDismissible: false,
       builder:
@@ -135,6 +136,7 @@ class _AccountSettingsState extends State<AccountSettings> {
                 child: const Text('Giriş ekranına dön'),
               ),
             ] else ...[
+              OutlinedButton(onPressed: busy ? null : () => Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => AppealsScreen(backend: widget.backend))), child: const Text('Hesap durumu ve itirazlar')),
               if (canModerate) OutlinedButton(onPressed: busy ? null : () async {
                 await Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => ModerationScreen(backend: widget.backend)));
                 if (mounted) loadModerationAccess();
@@ -219,8 +221,9 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
     });
     try {
       await widget.deleteAccount(password.text);
+      if (!mounted) return;
       password.clear();
-      if (mounted) Navigator.pop(context, true);
+      Navigator.pop(context, true);
     } catch (e) {
       if (mounted) setState(() => error = friendlyError(e));
     } finally {

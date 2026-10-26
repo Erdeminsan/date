@@ -189,7 +189,7 @@ class _MemberHomeState extends State<MemberHome> with WidgetsBindingObserver {
   }
 
   Future<void> block(String id) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showDialog<bool>(useRootNavigator: false,
       context: context,
       builder:
           (context) => AlertDialog(
@@ -219,7 +219,7 @@ class _MemberHomeState extends State<MemberHome> with WidgetsBindingObserver {
 
   Future<void> report(String id) async {
     var input = "";
-    final reason = await showDialog<String>(
+    final reason = await showDialog<String>(useRootNavigator: false,
       context: context,
       builder:
           (context) => AlertDialog(
@@ -255,7 +255,7 @@ class _MemberHomeState extends State<MemberHome> with WidgetsBindingObserver {
   }
 
   Future<void> unmatch(Connection connection) async {
-    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+    final confirmed = await showDialog<bool>(useRootNavigator: false, context: context, builder: (context) => AlertDialog(
       title: Text('${connection.name} ile eşleşmeden ayrıl?'),
       content: const Text('Eşleşme, karşılıklı beğeniler ve oyun davetleri silinir. Yeniden eşleşmek için ikinizin de tekrar beğenmesi gerekir. Birbirinizi keşfette görebilirsiniz; bunu istemiyorsan Engelle seçeneğini kullan.'),
       actions: [

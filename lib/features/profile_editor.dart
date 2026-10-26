@@ -43,7 +43,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
   Future<void> chooseBirth() async {
     final today = DateTime.now();
     final latest = DateTime(today.year - 18, today.month, today.day);
-    final value = await showDatePicker(
+    final value = await showDatePicker(useRootNavigator: false,
       context: context,
       initialDate: birth ?? DateTime(today.year - 25, 1, 1),
       firstDate: DateTime(1900),

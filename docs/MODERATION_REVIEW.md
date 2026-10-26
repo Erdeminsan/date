@@ -89,3 +89,9 @@ Bu paket kullanıcıya kısıtlama durumu ekranı, uygulama içi itiraz gönderi
 bildirim eklemez. Bunlar sürüm öncesi açık işlerdir. Moderatör atanmamıştır;
 gerçek hesaba yaptırım uygulanmamıştır. Yerel DB testleri çok bağlantılı yarış
 testi değildir; fiziksel cihaz/operatör kabulü ayrıca yapılmalıdır.
+
+### Sonraki paket: kullanıcı itirazları
+
+Kısıtlama durumu ve itiraz ekranları 20261026084939_moderation_appeals ile
+bağlandı. Yukarıdaki tarihsel açık işlerin güncel durumu ve sınırlamalar için
+MODERATION_APPEALS.md'ye bakın. Operatör ataması ve bildirimler hâlâ yoktur.

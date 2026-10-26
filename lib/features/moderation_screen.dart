@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../backend/repository.dart';
+import 'appeals_screen.dart';
 class ModerationScreen extends StatefulWidget {
   const ModerationScreen({super.key,required this.backend});
   final Backend backend;
@@ -55,7 +56,7 @@ class _ModerationScreenState extends State<ModerationScreen> with WidgetsBinding
   }
   Future<void> review(ModerationReport report) async {
     var decision='dismissed',note='';dialogOpen=true;
-    final accepted=await showDialog<bool>(context:context,builder:(context)=>StatefulBuilder(builder:(context,update)=>AlertDialog(
+    final accepted=await showDialog<bool>(useRootNavigator: false, context:context,builder:(context)=>StatefulBuilder(builder:(context,update)=>AlertDialog(
       title:const Text('Şikâyet kararı'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
         DropdownButton<String>(isExpanded:true,value:decision,items:const [
           DropdownMenuItem(value:'dismissed',child:Text('İşlem gerekmiyor')),
@@ -78,7 +79,7 @@ class _ModerationScreenState extends State<ModerationScreen> with WidgetsBinding
   }
   Future<void> sanctionAction({ModerationReport? report,ModerationSanction? sanction}) async {
     var hours=24,reason='';final lifting=sanction!=null;dialogOpen=true;
-    final accepted=await showDialog<bool>(context:context,builder:(context)=>StatefulBuilder(builder:(context,update)=>AlertDialog(
+    final accepted=await showDialog<bool>(useRootNavigator: false, context:context,builder:(context)=>StatefulBuilder(builder:(context,update)=>AlertDialog(
       title:Text(lifting?'Kısıtlamayı kaldır':'Hesabı süreli kısıtla'),
       content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
         Text(lifting?sanction.reportedName:report!.reportedName),
@@ -110,7 +111,7 @@ class _ModerationScreenState extends State<ModerationScreen> with WidgetsBinding
   @override
   void dispose(){generation++;timer?.cancel();WidgetsBinding.instance.removeObserver(this);super.dispose();}
   @override
-  Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Şikâyet inceleme')),
+  Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Şikâyet inceleme'),actions:[TextButton(onPressed:busy?null:()=>Navigator.of(context).push<void>(MaterialPageRoute(builder:(_)=>AppealsScreen(backend:widget.backend,moderator:true))),child:const Text('İtirazlar'))]),
     body:ListView(padding:const EdgeInsets.all(16),children:[
       SegmentedButton<String>(segments:const [ButtonSegment(value:'pending',label:Text('Bekleyen')),ButtonSegment(value:'reviewed',label:Text('İncelenen')),ButtonSegment(value:'sanctions',label:Text('Kısıtlamalar'))],selected:{status},
         onSelectionChanged:busy?null:(values){setState(()=>status=values.first);load();}),

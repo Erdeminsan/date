@@ -83,6 +83,16 @@ class ModerationSanction {
   final bool active;
   final String? liftReason;
 }
+class SanctionAppeal {
+  SanctionAppeal(Map<String,dynamic> data):id=data['id'] as String,sanctionId=data['sanction_id'] as String,
+    appealId=data['appeal_id'] as String?,expiresAt=DateTime.parse(data['expires_at'] as String),
+    active=data['active'] as bool,body=data['body'] as String?,decision=data['decision'] as String?,
+    response=data['response'] as String?,displayName=data['display_name'] as String?,internalReason=data['internal_reason'] as String?;
+  final String id,sanctionId;
+  final String? appealId,body,decision,response,displayName,internalReason;
+  final DateTime expiresAt;
+  final bool active;
+}
 class DiscoveryPreferences {
   DiscoveryPreferences(Map<String,dynamic> data):minAge=data['min_age'] as int,maxAge=data['max_age'] as int?;
   final int minAge;
@@ -232,6 +242,23 @@ class Backend {
       'p_match': matchId, 'p_action': action, 'p_room': roomId,
     });
     return RoomSnapshot(Map<String, dynamic>.from(data as Map));
+  }
+
+  Future<void> signOutLocal() => client.auth.signOut(scope: SignOutScope.local);
+  Future<bool> accountRestricted() async => await client.rpc('account_restricted') as bool;
+  Future<FeedPage<SanctionAppeal>> ownSanctions({FeedCursor? before}) async {
+    final data=await client.rpc('own_sanctions',params:{'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    return decodeFeedPage<SanctionAppeal>(data as List,SanctionAppeal.new);
+  }
+  Future<void> submitAppeal(String sanctionId,String body) async {
+    await client.rpc('submit_sanction_appeal',params:{'p_sanction':sanctionId,'p_body':body});
+  }
+  Future<FeedPage<SanctionAppeal>> moderationAppeals({bool reviewed=false,FeedCursor? before}) async {
+    final data=await client.rpc('moderation_appeals',params:{'p_reviewed':reviewed,'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    return decodeFeedPage<SanctionAppeal>(data as List,SanctionAppeal.new);
+  }
+  Future<void> reviewAppeal(String appealId,String decision,String response) async {
+    await client.rpc('review_sanction_appeal',params:{'p_appeal':appealId,'p_decision':decision,'p_response':response});
   }
 
   Future<bool> moderationAccess() async => await client.rpc('moderation_access') as bool;
