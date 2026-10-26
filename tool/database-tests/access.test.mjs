@@ -276,6 +276,7 @@ try {
     }
     async function finish(room,low,high) {
       await db.exec('reset role; set role service_role');
+      await db.query("select set_config('request.jwt.claim.sub','',false)");
       const prepared=(await scalar('select public.prepare_game_result($1,$2) as r',[room,ids.a])).r;
       assert.equal(prepared.status,'verify'); assert.equal(verifyRound(prepared).winnerId,null);
       // Trusted worker output fixture; Edge tests separately prove client claims cannot reach this RPC.
@@ -331,6 +332,13 @@ try {
       cross join unnest($2::uuid[]) p(id) cross join generate_series(0,44) n where r.id=$1`,[r.id,[ids.a,ids.b]]);
     await db.exec('set role service_role');
     assert.equal((await scalar('select public.prepare_game_result($1,$2) as r',[r.id,ids.a])).r.status,'verify');
+    await db.exec('reset role');
+    const restriction=(await scalar("insert into app_private.account_sanctions(user_id,duration_hours,reason,expires_at) values($1,24,'Test restriction',now()+interval '24 hours') returning id",[ids.b])).id;
+    await db.exec('set role service_role');
+    await db.query("select set_config('request.jwt.claim.sub','',false)");
+    await assert.rejects(()=>db.query('select public.prepare_game_result($1,$2)',[r.id,ids.a]),/ROOM_UNAVAILABLE/);
+    await assert.rejects(()=>db.query('select public.finalize_game_result($1,$2,1,0,0,0)',[r.id,ids.a]),/ROOM_UNAVAILABLE/);
+    await db.exec('reset role');await db.query('delete from app_private.account_sanctions where id=$1',[restriction]);
     await asUser('a'); await db.query("select public.game_room_action($1,'cancel',$2)",[match,r.id]);
     await db.exec('reset role; set role service_role');
     await assert.rejects(()=>db.query('select public.finalize_game_result($1,$2,1,0,0,0)',[r.id,ids.a]),/ROOM_UNAVAILABLE/);
@@ -481,6 +489,65 @@ try {
     await db.exec('reset role');await db.query('delete from app_private.moderators');
     await asUser('c');await assert.rejects(()=>db.query("select * from public.moderation_reports('reviewed')"),/MODERATOR_REQUIRED/);
     await asUser('a');
+  });
+  await check('sanctions require escalated independent review and reject privilege abuse', async () => {
+    await asUser('a');
+    await assert.rejects(()=>db.query('select * from public.moderation_sanctions()'),/MODERATOR_REQUIRED/);
+    await assert.rejects(()=>db.query('select * from app_private.account_sanctions'),/permission denied/);
+    await assert.rejects(()=>db.query('select app_private.account_active($1)',[ids.b]),/permission denied/);
+    await assert.rejects(()=>db.query("select public.suspend_reported_account($1,24,'Evidence reviewed')",[ids.a]),/MODERATOR_REQUIRED/);
+    await db.exec('reset role');await db.query('insert into app_private.moderators(user_id) values($1)',[ids.c]);
+    const report=(await scalar("insert into public.reports(reporter_id,reported_id,reason) values($1,$2,'Sanction fixture') returning id",[ids.a,ids.b])).id;
+    await asUser('c');
+    await assert.rejects(()=>db.query("select public.suspend_reported_account($1,24,'Evidence reviewed')",[report]),/ESCALATED_REVIEW_REQUIRED/);
+    for(const hours of [0,25,169,null])await assert.rejects(()=>db.query("select public.suspend_reported_account($1,$2,'Evidence reviewed')",[report,hours]),/INVALID_SANCTION/);
+    await db.query("select public.review_report($1,'escalated','Evidence reviewed')",[report]);
+    await db.exec('reset role');await db.query('insert into app_private.moderators(user_id) values($1),($2)',[ids.a,ids.b]);
+    await asUser('a');await assert.rejects(()=>db.query("select public.suspend_reported_account($1,24,'Evidence reviewed')",[report]),/REPORT_UNAVAILABLE/);
+    await asUser('c');await assert.rejects(()=>db.query("select public.suspend_reported_account($1,24,'Evidence reviewed')",[report]),/MODERATOR_TARGET_FORBIDDEN/);
+    await db.exec('reset role');await db.query('delete from app_private.moderators where user_id<>$1',[ids.c]);
+    await asUser('c');
+    const id=(await scalar("select public.suspend_reported_account($1,24,'Evidence reviewed') as id",[report])).id;
+    const original=(await db.query('select * from public.moderation_sanctions()')).rows[0];
+    assert.equal(original.id,id);assert.equal(original.active,true);
+    assert.equal((await scalar("select public.suspend_reported_account($1,24,' Evidence reviewed ') as id",[report])).id,id);
+    assert.deepEqual((await db.query('select * from public.moderation_sanctions()')).rows[0],original);
+    await assert.rejects(()=>db.query("select public.suspend_reported_account($1,168,'Evidence reviewed')",[report]),/SANCTION_CONFLICT/);
+    await asUser('b');await assert.rejects(()=>save('Bob'),/AUTH_REQUIRED/);
+    await assert.rejects(()=>db.query('select * from public.matches_page()'),/AUTH_REQUIRED/);
+    await asUser('a');assert.equal((await db.query('select * from public.profiles where id=$1',[ids.b])).rows.length,0);
+    // Removing the report must not implicitly release the restriction.
+    await db.exec('reset role');await db.query('delete from public.reports where id=$1',[report]);
+    await asUser('b');await assert.rejects(()=>save('Bob'),/AUTH_REQUIRED/);
+    await asUser('c');assert.equal((await db.query('select * from public.moderation_sanctions()')).rows[0].id,id);
+    await db.query("select public.lift_account_sanction($1,'Appeal evidence accepted')",[id]);
+    await db.query("select public.lift_account_sanction($1,'Appeal evidence accepted')",[id]);
+    await assert.rejects(()=>db.query("select public.lift_account_sanction($1,'Different reason')",[id]),/SANCTION_CONFLICT/);
+    assert.equal((await db.query('select * from public.moderation_sanctions()')).rows[0].active,false);
+    await asUser('b');await save('Bob');
+    await db.exec('reset role');await db.query('delete from app_private.account_sanctions where id=$1',[id]);await db.query('delete from app_private.moderators');
+  });
+  await check('independent restrictions survive reporter deletion and expire without a scheduler', async () => {
+    await db.exec('reset role');
+    await db.query('insert into app_private.moderators(user_id) values($1)',[ids.c]);
+    const reporter='99000000-0000-4000-8000-000000000001';
+    await db.query('insert into auth.users(id,email_confirmed_at) values($1,now())',[reporter]);
+    await db.query("insert into public.profiles(id,display_name) values($1,'Reporter fixture')",[reporter]);
+    const reports=(await db.query("insert into public.reports(reporter_id,reported_id,reason) select $1,$2,'Evidence fixture' from generate_series(1,2) returning id",[reporter,ids.b])).rows;
+    const sanctions=[];
+    await asUser('c');
+    for(const r of reports){
+      await db.query("select public.review_report($1,'escalated','Evidence reviewed')",[r.id]);
+      sanctions.push((await scalar("select public.suspend_reported_account($1,24,'Evidence reviewed') as id",[r.id])).id);
+    }
+    await db.exec('reset role');await db.query('delete from auth.users where id=$1',[reporter]);
+    assert.equal((await scalar('select count(*)::int as n from app_private.account_sanctions where report_id is null and reporter_id is null')).n,2);
+    await asUser('c');await db.query("select public.lift_account_sanction($1,'One case cleared')",[sanctions[0]]);
+    await asUser('b');await assert.rejects(()=>save('Bob'),/AUTH_REQUIRED/);
+    await db.exec('reset role');
+    await db.query("update app_private.account_sanctions set created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour' where id=$1",[sanctions[1]]);
+    await asUser('b');await save('Bob');
+    await db.exec('reset role');await db.query('delete from app_private.account_sanctions');await db.query('delete from app_private.moderators');
   });
   await check('hidden profile cannot receive or send new likes', async () => {
     await asUser('c');

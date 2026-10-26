@@ -74,6 +74,15 @@ class ModerationReport {
   final String id,reporterName,reportedName,reason;
   final String? decision,note;
 }
+class ModerationSanction {
+  ModerationSanction(Map<String,dynamic> data):id=data['id'] as String,reportedName=data['reported_name'] as String,
+    reason=data['reason'] as String,expiresAt=DateTime.parse(data['expires_at'] as String),
+    active=data['active'] as bool,liftReason=data['lift_reason'] as String?;
+  final String id,reportedName,reason;
+  final DateTime expiresAt;
+  final bool active;
+  final String? liftReason;
+}
 class DiscoveryPreferences {
   DiscoveryPreferences(Map<String,dynamic> data):minAge=data['min_age'] as int,maxAge=data['max_age'] as int?;
   final int minAge;
@@ -232,6 +241,17 @@ class Backend {
   }
   Future<void> reviewReport(String reportId,String decision,String note) async {
     await client.rpc('review_report',params:{'p_report':reportId,'p_decision':decision,'p_note':note});
+  }
+
+  Future<void> suspendReportedAccount(String reportId,int hours,String reason) async {
+    await client.rpc('suspend_reported_account',params:{'p_report':reportId,'p_hours':hours,'p_reason':reason});
+  }
+  Future<void> liftAccountSanction(String id,String reason) async {
+    await client.rpc('lift_account_sanction',params:{'p_sanction':id,'p_reason':reason});
+  }
+  Future<FeedPage<ModerationSanction>> moderationSanctions({FeedCursor? before}) async {
+    final data=await client.rpc('moderation_sanctions',params:{'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    return decodeFeedPage<ModerationSanction>(data as List,ModerationSanction.new);
   }
 
   Future<DiscoveryPreferences> discoveryPreferences() async => DiscoveryPreferences(Map<String,dynamic>.from(await client.rpc('get_discovery_preferences') as Map));

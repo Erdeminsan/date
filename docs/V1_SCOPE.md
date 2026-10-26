@@ -121,3 +121,10 @@ Otomatik eşleşme yenilemesi: [LIVE_MATCHES.md](LIVE_MATCHES.md).
 Keşfet yaş tercihleri: [DISCOVERY_PREFERENCES.md](DISCOVERY_PREFERENCES.md).
 
 Şikâyet inceleme paketi: [MODERATION_REVIEW.md](MODERATION_REVIEW.md).
+
+### 26 Ekim: moderasyon kısıtlama paketi
+- Gerekçeli 24 saat/7 gün kısıtlama, sunucu erişim denetimi, ayrı kaldırma kaydı,
+  idempotent tekrarlar ve rapor silinmesine dayanıklı kısıtlama listesi eklendi.
+- Oyun sonuç servisinde JWT subject olmadan katılımcı doğrulaması düzeltildi.
+- Kullanıcı kısıtlama durumu/itiraz ekranı, bildirim ve gerçek operatör ataması
+  hâlâ açık; TestFlight için tamamlanmış kabul edilmemeli.
