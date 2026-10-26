@@ -15,6 +15,7 @@ class _GameResultScreenState extends State<GameResultScreen> with WidgetsBinding
   GameResult? result;
   String? error;
   bool busy = false, foreground = true;
+  int generation = 0;
   @override
   void initState() {
     super.initState(); owner = widget.backend.userId;
@@ -24,25 +25,29 @@ class _GameResultScreenState extends State<GameResultScreen> with WidgetsBinding
     });
   }
   Future<void> read() async {
-    if (busy) return;
+    if (busy || !foreground) return;
+    final request = ++generation;
     setState(() { busy = true; error = null; });
     try {
       if (widget.backend.userId != owner) throw StateError('Session changed');
       final value = await widget.backend.gameResult(widget.roomId, finalize: result == null).timeout(const Duration(seconds: 6));
-      if (!mounted || !foreground) return;
+      if (!mounted || !foreground || request != generation) return;
       if (widget.backend.userId != owner) throw StateError('Session changed');
       setState(() => result = value);
     } catch (_) {
-      if (mounted) setState(() { result = null; error = 'Sonuç alınamadı. Bağlantını kontrol edip tekrar dene.'; });
-    } finally { if (mounted) setState(() => busy = false); }
+      if (mounted && request == generation) setState(() { result = null; error = 'Sonuç alınamadı. Bağlantını kontrol edip tekrar dene.'; });
+    } finally { if (mounted && request == generation) setState(() => busy = false); }
   }
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     foreground = state == AppLifecycleState.resumed;
-    if (!foreground) { setState(() => result = null); } else { read(); }
+    if (!foreground) {
+      generation++;
+      setState(() { result = null; error = null; busy = false; });
+    } else { read(); }
   }
   @override
-  void dispose() { timer?.cancel(); WidgetsBinding.instance.removeObserver(this); super.dispose(); }
+  void dispose() { generation++; timer?.cancel(); WidgetsBinding.instance.removeObserver(this); super.dispose(); }
   @override
   Widget build(BuildContext context) {
     final r = result;

@@ -34,7 +34,12 @@ class _GameLobbyState extends State<GameLobby> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     foreground = state == AppLifecycleState.resumed;
-    if (foreground) refresh();
+    if (foreground) {
+      refresh();
+    } else {
+      generation++;
+      setState(() { snapshot = null; error = null; busy = false; });
+    }
   }
   @override
   void dispose() {
@@ -44,14 +49,14 @@ class _GameLobbyState extends State<GameLobby> with WidgetsBindingObserver {
     super.dispose();
   }
   Future<void> refresh([String action = 'read']) async {
-    if (busy) return;
+    if (busy || !foreground) return;
     final request = ++generation;
     final roomId = action == 'read' || action == 'invite' ? null : snapshot?.room?.id;
     setState(() { busy = true; error = null; });
     final watch = Stopwatch()..start();
     try {
       if (widget.backend.userId != owner) throw StateError('Session changed');
-      final value = await widget.backend.gameRoom(widget.connection.id, action: action, roomId: roomId);
+      final value = await widget.backend.gameRoom(widget.connection.id, action: action, roomId: roomId).timeout(const Duration(seconds: 6));
       watch.stop();
       if (!mounted || request != generation) return;
       if (widget.backend.userId != owner) throw StateError('Session changed');
