@@ -1,4 +1,6 @@
 import 'dart:math';
+import 'dart:convert';
+import 'package:crypto/crypto.dart' as crypto;
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -77,10 +79,11 @@ class MessageEvidence {
 }
 class ModerationReport {
   ModerationReport(Map<String,dynamic> data):id=data['id'] as String,reporterName=data['reporter_name'] as String,
-    reportedName=data['reported_name'] as String,reason=data['reason'] as String,decision=data['decision'] as String?,note=data['review_note'] as String?,evidence=MessageEvidence.fromJson(data);
+    reportedName=data['reported_name'] as String,reason=data['reason'] as String,decision=data['decision'] as String?,note=data['review_note'] as String?,evidence=MessageEvidence.fromJson(data),photoReportId=data['photo_report_id'] as String?;
   final String id,reporterName,reportedName,reason;
   final String? decision,note;
   final MessageEvidence? evidence;
+  final String? photoReportId;
 }
 class ModerationSanction {
   ModerationSanction(Map<String,dynamic> data):id=data['id'] as String,reportedName=data['reported_name'] as String,
@@ -95,9 +98,10 @@ class SanctionAppeal {
   SanctionAppeal(Map<String,dynamic> data):id=data['id'] as String,sanctionId=data['sanction_id'] as String,
     appealId=data['appeal_id'] as String?,expiresAt=DateTime.parse(data['expires_at'] as String),
     active=data['active'] as bool,body=data['body'] as String?,decision=data['decision'] as String?,
-    response=data['response'] as String?,displayName=data['display_name'] as String?,internalReason=data['internal_reason'] as String?,publicNotice=data['public_notice'] as String?,evidence=MessageEvidence.fromJson(data);
+    response=data['response'] as String?,displayName=data['display_name'] as String?,internalReason=data['internal_reason'] as String?,publicNotice=data['public_notice'] as String?,evidence=MessageEvidence.fromJson(data),photoReportId=data['photo_report_id'] as String?;
   final String id,sanctionId;
   final MessageEvidence? evidence;
+  final String? photoReportId;
   final String? appealId,body,decision,response,displayName,internalReason,publicNotice;
   final DateTime expiresAt;
   final bool active;
@@ -263,7 +267,7 @@ class Backend {
     await client.rpc('submit_sanction_appeal',params:{'p_sanction':sanctionId,'p_body':body});
   }
   Future<FeedPage<SanctionAppeal>> moderationAppeals({bool reviewed=false,FeedCursor? before}) async {
-    final data=await client.rpc('moderation_appeals_v3',params:{'p_reviewed':reviewed,'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    final data=await client.rpc('moderation_appeals_v4',params:{'p_reviewed':reviewed,'p_before_time':before?.createdAt,'p_before_id':before?.id});
     return decodeFeedPage<SanctionAppeal>(data as List,SanctionAppeal.new);
   }
   Future<void> reviewAppeal(String appealId,String decision,String response) async {
@@ -272,7 +276,7 @@ class Backend {
 
   Future<bool> moderationAccess() async => await client.rpc('moderation_access') as bool;
   Future<FeedPage<ModerationReport>> moderationReports({String status='pending',FeedCursor? before}) async {
-    final data=await client.rpc('moderation_reports_v2',params:{'p_status':status,'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    final data=await client.rpc('moderation_reports_v3',params:{'p_status':status,'p_before_time':before?.createdAt,'p_before_id':before?.id});
     return decodeFeedPage<ModerationReport>(data as List,ModerationReport.new);
   }
   Future<void> reviewReport(String reportId,String decision,String note) async {
@@ -358,6 +362,20 @@ class Backend {
         response.data['deleted'] != true) {
       throw StateError('Account deletion was not confirmed');
     }
+  }
+
+  Future<void> reportPhoto({required String targetId,required String path,required String requestId,required String reason,required String digest}) async {
+    final result=await client.functions.invoke('report-photo',body:{'target_id':targetId,'path':path,'request_id':requestId,'reason':reason,'sha256':digest});
+    if(result.status!=200 || result.data is! Map || result.data['status']!='completed')throw StateError('Photo report not confirmed');
+  }
+  Future<bool> moderationPhotoAccess(String reportId) async => await client.rpc('moderation_photo_access',params:{'p_report':reportId}) as bool;
+  Future<Uint8List> moderationPhoto(String reportId) async {
+    final data=Map<String,dynamic>.from(await client.rpc('moderation_photo_evidence',params:{'p_report':reportId}) as Map);
+    final encoded=data['base64'] as String;
+    if(encoded.length>2796204)throw StateError('Image exceeds limit');
+    final bytes=base64Decode(encoded);
+    if(bytes.length>2097152 || crypto.sha256.convert(bytes).toString()!=data['sha256'])throw StateError('Image verification failed');
+    return bytes;
   }
 
   Future<void> reportMessage(String matchId,String messageId,String reason) async {

@@ -4,3 +4,7 @@ project_id = "playmatch"
 # The handler verifies the bearer with Auth getUser, then reauthenticates with
 # the owner's password. Gateway verification is disabled for signing-key compatibility.
 verify_jwt = false
+
+[functions.report-photo]
+# The handler authenticates via getUser before any privileged RPC/download.
+verify_jwt = false

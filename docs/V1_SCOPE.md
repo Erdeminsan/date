@@ -152,3 +152,12 @@ Keşfet yaş tercihleri: [DISCOVERY_PREFERENCES.md](DISCOVERY_PREFERENCES.md).
 - Unmatch/block kanıtı silmez; rapor/hesap silme mevcut cascade kurallarını izler.
   Ayrıntılar ve saklama sınırlamaları MESSAGE_REPORT_EVIDENCE.md'de.
 - Fotoğraf kanıtı ve gerçek operatör/cihaz/saklama/bildirim/dağıtım işleri açık.
+
+### 26 Ekim: profil fotoğrafı kanıtı
+- Profil fotoğrafını önizleyerek şikâyet etme; sunucudan kopyalama, önizleme hash'i,
+  kaynak nesne sürümü, atomik rapor/kopya ve değişmez tekrar eklendi.
+- Moderatör şikâyet/itiraz kuyruğundan korumalı fotoğraf görüntüleyicisine gider.
+  Liste görsel taşımaz; rapor/hesap silme kopyayı da siler.
+- Depolama, saklama ve gerçek kabul sınırları PHOTO_REPORT_EVIDENCE.md'de.
+- Gerçek operatör, kota geçmişi, saklama/bildirim operasyonları, SMTP, fiziksel
+  cihaz kabulü ve imzalı TestFlight dağıtımı açık.

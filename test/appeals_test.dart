@@ -23,7 +23,7 @@ class AppealBackend implements Backend {
     'appeal_id': submitted || moderator ? 'appeal' : null, 'expires_at': '2026-10-28T12:00:00Z',
     'active': restricted, 'body': submitted || moderator ? 'Please reconsider' : null,
     'decision': savedDecision, 'response': response, 'display_name': moderator ? 'Target' : null,
-    'internal_reason': 'Private evidence', 'public_notice': publicNotice,
+    'internal_reason': 'Private evidence', 'public_notice': publicNotice, 'photo_report_id':'photo-report',
     'message_body':'Captured private message','message_created_at':'2026-01-01T12:00:00Z','evidence_captured_at':'2026-01-02T12:00:00Z',
   });
   @override
@@ -57,6 +57,7 @@ void main() {
     final b = AppealBackend(); await open(tester, b);
     expect(find.textContaining('Private evidence'), findsNothing);
     expect(find.byType(MessageEvidenceView), findsNothing);
+    expect(find.text('Fotoğraf kanıtını aç'), findsNothing);
     expect(find.text('Karar açıklaması: Repeated unwanted contact'), findsOneWidget);
     await tester.tap(find.text('İtiraz et')); await tester.pumpAndSettle();
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'İtirazı gönder')).onPressed, isNull);

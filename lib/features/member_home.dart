@@ -5,6 +5,7 @@ import '../demo_app.dart' show GameScreen;
 import 'profile_editor.dart';
 import 'account_settings.dart';
 import 'profile_photo.dart';
+import 'photo_report_screen.dart';
 import 'game_lobby.dart';
 import 'match_details_screen.dart';
 import 'chat_screen.dart';
@@ -269,10 +270,14 @@ class _MemberHomeState extends State<MemberHome> with WidgetsBindingObserver {
     });
   }
 
-  Widget menu(String id, {Connection? connection}) => PopupMenuButton<String>(
+  Widget menu(String id, {Connection? connection,String? photoPath}) => PopupMenuButton<String>(
     enabled: !acting,
     onSelected: (v) {
-      if (v == 'block') {
+      if(v=='photo' && photoPath!=null){
+        Navigator.of(context).push<bool>(MaterialPageRoute(builder:(_)=>PhotoReportScreen(backend:widget.backend,targetId:id,path:photoPath))).then((saved){
+          if(mounted){if(saved==true)notify('Fotoğraf şikâyetin kaydedildi.');reload();}
+        });
+      } else if (v == 'block') {
         block(id);
       } else if (v == 'details' && connection != null) {
         Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => MatchDetailsScreen(backend: widget.backend, connection: connection)));
@@ -291,6 +296,7 @@ class _MemberHomeState extends State<MemberHome> with WidgetsBindingObserver {
           if (connection != null) const PopupMenuItem(value: 'unmatch', child: Text('Eşleşmeden ayrıl')),
           const PopupMenuItem(value: 'block', child: Text('Engelle')),
           const PopupMenuItem(value: 'report', child: Text('Şikâyet et')),
+          if(photoPath!=null)const PopupMenuItem(value:'photo',child:Text('Fotoğrafı şikâyet et')),
         ],
   );
   @override
@@ -415,7 +421,7 @@ class _MemberHomeState extends State<MemberHome> with WidgetsBindingObserver {
                   subtitle: const Text(
                     'Sohbeti aç',
                   ),
-                  trailing: menu(c.otherId, connection: c),
+                  trailing: menu(c.otherId, connection: c, photoPath:c.photoPath),
                 ),
               ),
             pageFooter(true),
@@ -496,7 +502,7 @@ class _MemberHomeState extends State<MemberHome> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                        menu(p.id),
+                        menu(p.id,photoPath:p.photoPath),
                       ],
                     ),
                     const SizedBox(height: 20),
