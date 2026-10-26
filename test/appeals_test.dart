@@ -113,9 +113,15 @@ void main() {
     await tester.pumpAndSettle();
     final delayed = Completer<bool>(); b.nextStatus = delayed.future;
     await tester.pump(const Duration(seconds: 5));
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused); await tester.pump();
+    // Paint the privacy mask during inactive, before paused disables frames.
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive); await tester.pump();
     expect(find.text('Private home'), findsNothing);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
     b.nextStatus = null; b.restricted = true;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed); await tester.pumpAndSettle();
     delayed.complete(false); await tester.pumpAndSettle();
     expect(find.text('Private home', skipOffstage: false), findsNothing);
