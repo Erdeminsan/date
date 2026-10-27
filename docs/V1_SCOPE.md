@@ -9,13 +9,13 @@
 | Alan | 1.0.0 kabulü | Mevcut durum |
 | --- | --- | --- |
 | Üyelik | Kayıt, doğrulama, giriş/çıkış, sıfırlama, hesap silme; gerçek cihazda soğuk/sıcak başlangıç | Kod var; gerçek e-posta/cihaz kabulü eksik |
-| Profil | 18+ profil, düzenleme, fotoğraf, görünürlük ve keşfet tercihleri | Metin profili ve özel fotoğraf akışı main içinde; gerçek cihaz kabulü ve tercihler eksik |
+| Profil | 18+ profil, düzenleme, fotoğraf, görünürlük ve keşfet tercihleri | Metin/özel fotoğraf akışı ve yaş tercihi var; gerçek cihaz kabulü eksik |
 | Keşfet | Tercihlere uygun, engelli/yasaklı hesapları dışlayan, devamı yüklenebilen liste | 20 kayıtlık sayfalama ve yaş tercihi var; cihaz kabulü ve diğer tercihlerin kapsamı açık |
-| Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni ve sayfalama var; ayrılma main içinde; görünür eşleşme listesinin otomatik yenilenmesi geliştirme dalında |
-| Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Davet ve bekleme odası main içinde; hazır olma ve ortak zamanlı tur main içinde; sunucu sonucu/kopuş kabulü eksik |
-| Sonuç ve bilgi açılması | Sunucunun doğruladığı sonuç; aynı sonucu tekrar göndermek güvenli; yalnızca ilgili eşleşmeye erişim | Replay, canlı sonuç servisi ve eşleşmeden açılan bilgi ekranı geliştirme paketlerinde; cihaz kabulü eksik |
+| Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni, sayfalama, ayrılma ve otomatik yenileme kodda; cihaz kabulü eksik |
+| Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Davet, ortak tur ve bağımsız sunucu sonuç işçisi var; fiziksel kopuş/yük kabulü eksik |
+| Sonuç ve bilgi açılması | Sunucunun doğruladığı sonuç; aynı sonucu tekrar göndermek güvenli; yalnızca ilgili eşleşmeye erişim | Replay, kalıcı sonuç, tekil ödül ve bilgi ekranı var; cihaz kabulü eksik |
 | Mesajlaşma | Yalnızca izinli eşleşmeler; kalıcı mesajlar, sayfalama, otomatik güncelleme, gönderim hatası/tekrar; engel/yasak kontrolü | Metin sohbeti main içinde; 3 sn polling, güvenli retry ve erişim kontrolleri var; gerçek cihaz kabulü eksik |
-| Güvenlik/moderasyon | Şikâyet inceleme ve yaptırım, denetim kaydı, silme/saklama politikası, kötüye kullanım sınırları | Yetkili şikâyet kuyruğu ve gerekçeli inceleme kaydı geliştirme paketinde; yaptırım, operatör ve saklama akışı eksik |
+| Güvenlik/moderasyon | Şikâyet inceleme ve yaptırım, denetim kaydı, silme/saklama politikası, kötüye kullanım sınırları | İnceleme, yaptırım, itiraz, mesaj/fotoğraf kanıtı ve kalıcı kota var; operatör/saklama/bildirim işleri açık |
 | Kullanıcı bilgilendirmesi | Gerçek destek ve gizlilik bağlantıları, kullanım koşulları, veri kullanımı ve hesap silme açıklaması | İşletmeci bilgileri/metinler eksik |
 | Yayın | Otomatik testler, iki gerçek hesap, fiziksel iPhone, ağ kopması, imzalı arşiv ve TestFlight kurulumu | CI geçti; cihaz/imza/kabul eksik |
 
@@ -24,7 +24,7 @@ Onaylanan kural: yalnız kazananın ilk galibiyetinde rakibinin şehri, ikinci
 galibiyetinde ilgi alanları açılır. Eşitlikte bilgi açılmaz. Mesajlaşma eşleşme oluşunca iki tarafa da açılır;
 oyun ön koşulu yoktur.
 
-## Uygulama sırası
+## Tarihsel geliştirme sırası ve paket kayıtları
 
 1. Doğrulanmış güvenlik hataları, hesap akışı ve regresyon testleri.
 2. Keşfet/eşleşme sayfalaması, toplu veri sorguları, profil fotoğrafı ve tercihler.
@@ -179,3 +179,12 @@ Keşfet yaş tercihleri: [DISCOVERY_PREFERENCES.md](DISCOVERY_PREFERENCES.md).
   iki fiziksel cihaz ve çok bağlantılı yük kabulü hâlâ açıktır.
 - Son canlı güvenlik kontrolünde Auth sızmış parola korumasının kapalı olduğu
   görüldü; yayın öncesi Auth yapılandırması kapsamında değerlendirilmelidir.
+
+### 27 Ekim: cihaz kabulüne hazırlık
+- Giriş ekranı, README ve TestFlight/oyun belgelerindeki eski özellik durumu
+  düzeltildi; başlangıç komutu main dalını kullanır.
+- Hesap silme/ilişkili kayıt temizliği için eksik yedi foreign key indeksi eklendi.
+- Fiziksel kabul senaryoları DEVICE_ACCEPTANCE.md'de, sonuçları boş olarak hazır.
+- Açık: profil şikâyetinde belirsiz yanıt tekrarının request ID ile tekilleştirilmesi,
+  SMTP/redirect ve test hesapları, gerçek moderatör, destek/gizlilik/koşullar,
+  bildirim kapsamı, saklama/alarmlar, yük testi ve imzalı TestFlight dağıtımı.
