@@ -161,3 +161,12 @@ Keşfet yaş tercihleri: [DISCOVERY_PREFERENCES.md](DISCOVERY_PREFERENCES.md).
 - Depolama, saklama ve gerçek kabul sınırları PHOTO_REPORT_EVIDENCE.md'de.
 - Gerçek operatör, kota geçmişi, saklama/bildirim operasyonları, SMTP, fiziksel
   cihaz kabulü ve imzalı TestFlight dağıtımı açık.
+
+### 27 Ekim: şikâyet kotası geçmişi
+- Profil, mesaj ve fotoğraf raporları son 24 saatte 10 ortak başarılı işlem
+  sınırını ayrı özel olay tablosundan hesaplar. Rapor/hedef hesap silinmesi
+  kotayı geri açmaz; şikâyetçinin hesabı silinince sayaç temizlenir.
+- Migration 20261027032216 geliştirme ortamına uygulandı.
+  Ayrıntılar ve saklama sınırları REPORT_QUOTA.md'de.
+- Genel profil şikâyetinin belirsiz yanıt tekrarını request ID ile tekilleştirme,
+  çok bağlantılı yarış kabulü ve global zamanlanmış temizlik ayrıca açıktır.

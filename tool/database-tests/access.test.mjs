@@ -48,7 +48,20 @@ try {
   }
   const migrationDir = new URL('../../supabase/migrations/', import.meta.url);
   for (const file of (await readdir(migrationDir)).filter(f => f.endsWith('.sql')).sort()) {
+    const quotaMigration=file.endsWith('_durable_report_quota.sql');
+    const reporter='99000000-0000-4000-8000-000000000040', target='99000000-0000-4000-8000-000000000041';
+    if(quotaMigration) {
+      await db.query('insert into auth.users(id,email_confirmed_at) values($1,now()),($2,now())',[reporter,target]);
+      await db.query("insert into public.profiles(id,display_name) values($1,'Migration reporter'),($2,'Migration target')",[reporter,target]);
+      await db.query("insert into public.reports(reporter_id,reported_id,reason,created_at) values($1,$2,'Recent report',now()),($1,$2,'Older report',now()-interval '25 hours')",[reporter,target]);
+    }
     await db.exec(await readFile(new URL(file, migrationDir), 'utf8'));
+    if(quotaMigration) await check('quota migration backfills only recent surviving reports', async()=>{
+      assert.equal((await scalar('select count(*)::int as n from app_private.report_events where actor_id=$1',[reporter])).n,1);
+      await db.query('delete from auth.users where id=$1',[target]);
+      assert.equal((await scalar('select count(*)::int as n from app_private.report_events where actor_id=$1',[reporter])).n,1);
+      await db.query('delete from auth.users where id=$1',[reporter]);
+    });
   }
   await check('unconfirmed account cannot create a profile', async () => {
     await asUser('d'); await assert.rejects(() => save('Unconfirmed'), /AUTH_REQUIRED/);
@@ -678,6 +691,7 @@ try {
     await asUser('e');await assert.rejects(()=>db.query("select public.report_message($1,$2,'One too many')",[match,other]),/REPORT_LIMIT/);
     assert.equal((await scalar("select public.report_message($1,$2,'Unwanted contact') as id",[match,message.id])).id,report);
     await db.exec('reset role');assert.equal((await scalar('select count(*)::int as n from app_private.report_message_evidence where reporter_id=$1',[ids.e])).n,1);
+    assert.equal((await scalar('select count(*)::int as n from app_private.report_events where actor_id=$1',[ids.e])).n,10);
     await db.query('insert into app_private.moderators(user_id) values($1),($2)',[ids.c,ids.e]);
     await asUser('e');assert.ok(!(await db.query('select * from public.moderation_reports_v3()')).rows.some(r=>r.id===report));
     await db.exec('reset role');await db.query('delete from app_private.moderators where user_id=$1',[ids.e]);
@@ -728,9 +742,15 @@ try {
     await db.query("insert into public.reports(reporter_id,reported_id,reason) select $1,$2,'Quota fixture' from generate_series(1,10)",[ids.e,ids.f]);
     await service();await assert.rejects(()=>prepare(),/REPORT_LIMIT/);
     await db.exec('reset role');await db.query('delete from public.reports where reporter_id=$1',[ids.e]);
+    await service();await assert.rejects(()=>prepare(),/REPORT_LIMIT/);
+    await db.exec('reset role');
+    await db.query("update app_private.report_events set created_at=now()-interval '25 hours' where actor_id=$1",[ids.e]);
     await service();const saved=await finalize();assert.equal(saved.status,'completed');
     assert.deepEqual(await finalize(),saved);
     await assert.rejects(()=>prepare([...args.slice(0,4),'Different reason',digest]),/REPORT_CONFLICT/);
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.report_events where actor_id=$1',[ids.e])).n,1);
+    await service();
     await asUser('f');await db.query('select public.set_profile_photo(null)');await db.query('delete from storage.objects where name=$1',[path]);
     await service();assert.deepEqual(await prepare(),saved);
     await db.exec('reset role');await db.query('insert into app_private.moderators(user_id) values($1),($2)',[ids.c,ids.e]);
@@ -925,6 +945,40 @@ try {
     await assert.rejects(() => db.query('select public.blocked_profiles()'), /permission denied/);
     await assert.rejects(() => db.query('select public.unblock_profile($1)',[ids.a]), /permission denied/);
     await assert.rejects(() => db.query('select app_private.like_profile($1)',[ids.a]), /permission denied/);
+  });
+  await check('report quota survives target deletion, expires, rolls back and is private', async () => {
+    ids.q='99000000-0000-4000-8000-000000000030';
+    ids.t='99000000-0000-4000-8000-000000000031';
+    await db.exec('reset role');
+    await db.query('insert into auth.users(id,email_confirmed_at) values($1,now()),($2,now())',[ids.q,ids.t]);
+    await asUser('q');await save('Quota reporter');
+    await asUser('t');await save('Quota target');
+    await asUser('q');
+    await assert.rejects(()=>db.query("select public.report_profile($1,'x')",[ids.t]),/check constraint/);
+    await assert.rejects(()=>db.query('select * from app_private.report_events'),/permission denied/);
+    await assert.rejects(()=>db.query('delete from app_private.report_events'),/permission denied/);
+    await assert.rejects(()=>db.query('select app_private.record_report_event()'),/permission denied/);
+    for(let i=0;i<10;i++) await db.query("select public.report_profile($1,'Quota test reason')",[ids.t]);
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.report_events where actor_id=$1',[ids.q])).n,10);
+    await db.query('delete from auth.users where id=$1',[ids.t]);
+    assert.equal((await scalar('select count(*)::int as n from public.reports where reporter_id=$1',[ids.q])).n,0);
+    await asUser('q');
+    await assert.rejects(()=>db.query("select public.report_profile($1,'New target reason')",[ids.a]),/REPORT_LIMIT/);
+    await db.exec('reset role');
+    await db.query("update app_private.report_events set created_at=now()-interval '25 hours' where actor_id=$1",[ids.q]);
+    await asUser('q');
+    await db.exec('begin');
+    await db.query("select public.report_profile($1,'Rolled back report')",[ids.a]);
+    await db.exec('rollback');
+    await db.exec('reset role');
+    assert.equal((await scalar("select count(*)::int as n from app_private.report_events where actor_id=$1 and created_at>now()-interval '1 day'",[ids.q])).n,0);
+    await asUser('q');await db.query("select public.report_profile($1,'New daily report')",[ids.a]);
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.report_events where actor_id=$1',[ids.q])).n,1);
+    await db.query('delete from auth.users where id=$1',[ids.q]);
+    assert.equal((await scalar('select count(*)::int as n from app_private.report_events where actor_id=$1',[ids.q])).n,0);
+    delete ids.q;delete ids.t;
   });
   await check('deleted user cannot use a stale user id', async () => {
     await db.exec('reset role'); await db.query('delete from auth.users where id=$1',[ids.c]);

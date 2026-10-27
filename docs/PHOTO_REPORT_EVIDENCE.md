@@ -80,3 +80,6 @@ tekrarı, arka plan sonrası aynı istek, eksik önizleme, vaka erişimi kaybı 
 gecikmiş resim yanıtının eski veriyi geri getirmemesi.
 
 Gerçek kullanıcı ve operatörle iki iPhone uçtan uca kabulü henüz yapılmadı.
+
+27 Ekim güncellemesi: kota artık rapor silinmesine dayanıklı özel olay tablosundan
+hesaplanır. Önceki kota sınırlaması giderildi; bkz. REPORT_QUOTA.md.
