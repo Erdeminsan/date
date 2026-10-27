@@ -12,7 +12,7 @@ function requireValid(condition, reason) {
 // receipts from trusted storage, authorize active participants, and lock/recheck
 // the match before atomically recording any result/unlock. Never pass request
 // JSON as room/receipts: receivedAtMs must be the database's initial receipt time.
-export function verifyRound({room, streams, nowMs}) {
+export function verifyRound({room, streams, nowMs, resultDeadlineMs}) {
   requireValid(room != null && streams != null, 'round');
   requireValid(room.engineVersion === GameEngine.version, 'engine version');
   requireValid(room.inputProtocol === INPUT_PROTOCOL, 'input protocol');
@@ -20,8 +20,11 @@ export function verifyRound({room, streams, nowMs}) {
   requireValid(Number.isSafeInteger(room.startsAtMs) &&
     Number.isSafeInteger(room.endsAtMs) && room.endsAtMs === room.startsAtMs + 45000,
   'schedule');
+  const deadline = resultDeadlineMs ?? room.endsAtMs + 15000;
+  requireValid(Number.isSafeInteger(deadline) && deadline > room.endsAtMs &&
+    deadline <= room.endsAtMs + 86400000, 'result deadline');
   requireValid(Number.isSafeInteger(nowMs) && nowMs >= room.endsAtMs &&
-    nowMs < room.endsAtMs + 15000, 'result window');
+    nowMs < deadline, 'result window');
   requireValid(typeof room.id === 'string' && room.id.length > 0, 'room id');
   requireValid(Array.isArray(room.players) && room.players.length === 2 &&
     room.players.every(p => typeof p === 'string' && p.length > 0) &&

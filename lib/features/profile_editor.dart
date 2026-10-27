@@ -43,7 +43,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
   Future<void> chooseBirth() async {
     final today = DateTime.now();
     final latest = DateTime(today.year - 18, today.month, today.day);
-    final value = await showDatePicker(
+    final value = await showDatePicker(useRootNavigator: false,
       context: context,
       initialDate: birth ?? DateTime(today.year - 25, 1, 1),
       firstDate: DateTime(1900),
@@ -94,7 +94,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
         ),
         const SizedBox(height: 12),
         const Text(
-          'Adın keşfette görünür. Eşleştiğin kişi sana karşı ilk doğrulanmış galibiyetinde şehrini, ikinci galibiyetinde ilgi alanlarını görebilir. Doğum tarihin ve e-postan oyunla paylaşılmaz.',
+          'Adın keşfette görünür. Eşleştiğin kişi sana karşı ilk doğrulanmış galibiyetinde şehrini, ikinci galibiyetinde ilgi alanlarını görebilir. Doğum tarihin ve e-postan oyunla paylaşılmaz. Yaşın keşfet filtrelerine uygunluk için kullanılır; tarih gösterilmez.',
         ),
         const SizedBox(height: 24),
         TextFormField(

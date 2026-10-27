@@ -7,6 +7,8 @@ class UnmatchBackend implements Backend {
   int calls = 0;
   bool fail = false, removed = false;
   @override
+  String get userId => 'me';
+  @override
   Future<OwnProfile?> profile() async => OwnProfile(const Person(id: 'me', name: 'Me'), DateTime(2000), 'City', '');
   @override
   Future<FeedPage<Person>> discover({FeedCursor? before}) async => const FeedPage([], null);
@@ -23,6 +25,7 @@ class UnmatchBackend implements Backend {
 }
 void main() {
   Future<void> open(WidgetTester tester, UnmatchBackend backend) async {
+    addTearDown(() async { await tester.pumpWidget(const SizedBox()); });
     await tester.pumpWidget(MaterialApp(home: MemberHome(backend: backend)));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Eşleşmeler')); await tester.pumpAndSettle();

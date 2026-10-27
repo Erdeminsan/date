@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playmatch/backend/repository.dart';
 import 'package:playmatch/features/chat_screen.dart';
 
 class ChatBackend implements Backend {
-  bool failSendOnce = false, failRead = false;
+  bool failSendOnce = false, failRead = false, failReportOnce = false;
+  final reports = <List<String>>[];
+  Future<MessagePage>? pendingRead;
   int reads = 0;
   final requests = <String>[];
   ChatMessage? stored;
@@ -14,6 +17,7 @@ class ChatBackend implements Backend {
   Future<MessagePage> messages(String matchId,{String? before,String? after}) async {
     reads++;
     if (failRead) throw Exception('access lost');
+    if (pendingRead != null) return pendingRead!;
     return MessagePage(stored == null || after == stored!.id ? [] : [stored!],false);
   }
   @override
@@ -22,6 +26,11 @@ class ChatBackend implements Backend {
     stored ??= ChatMessage({'id':'1','sender_id':'me','request_id':requestId,'body':body});
     if (failSendOnce) { failSendOnce = false; throw Exception('response lost'); }
     return stored!;
+  }
+  @override
+  Future<void> reportMessage(String matchId,String messageId,String reason) async {
+    reports.add([matchId,messageId,reason]);
+    if(failReportOnce){failReportOnce=false;throw Exception('response lost');}
   }
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
@@ -77,4 +86,54 @@ void main() {
     await tester.pumpAndSettle(); expect(backend.reads,count+1);
     await close(tester); await tester.pump(const Duration(seconds:6)); expect(backend.reads,count+1);
   });
+  testWidgets('selected opponent message is previewed and reported with a required reason', (tester) async {
+    final b=ChatBackend()..stored=ChatMessage({'id':'8','sender_id':'other','request_id':'old','body':'Selected evidence'});
+    await open(tester,b);await tester.tap(find.byKey(const ValueKey('report-message-8')));await tester.pumpAndSettle();
+    expect(find.text('Selected evidence'),findsNWidgets(2));
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton,'Şikâyeti gönder')).onPressed,isNull);
+    await tester.enterText(find.byKey(const ValueKey('message-report-reason')),'Unwanted contact');await tester.pump();
+    await tester.tap(find.text('Şikâyeti gönder'));await tester.pumpAndSettle();
+    expect(b.reports,[['match','8','Unwanted contact']]);
+    expect(find.text('Şikâyetin seçtiğin mesajla birlikte kaydedildi.'),findsOneWidget);
+    await close(tester);
+  });
+  testWidgets('own message has no report action', (tester) async {
+    final b=ChatBackend()..stored=ChatMessage({'id':'8','sender_id':'me','request_id':'old','body':'My message'});
+    await open(tester,b);expect(find.byTooltip('Mesajı şikâyet et'),findsNothing);await close(tester);
+  });
+  testWidgets('uncertain report retry preserves the selected message and reason', (tester) async {
+    final b=ChatBackend()..failReportOnce=true..stored=ChatMessage({'id':'8','sender_id':'other','request_id':'old','body':'Selected evidence'});
+    await open(tester,b);await tester.tap(find.byKey(const ValueKey('report-message-8')));await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('message-report-reason')),'Unwanted contact');await tester.pump();
+    await tester.tap(find.text('Şikâyeti gönder'));await tester.pumpAndSettle();
+    expect(find.textContaining('Şikâyet doğrulanamadı'),findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('report-message-8')));await tester.pumpAndSettle();
+    expect(find.text('Unwanted contact'),findsOneWidget);
+    await tester.tap(find.text('Şikâyeti gönder'));await tester.pumpAndSettle();
+    expect(b.reports.length,2);expect(b.reports[0],b.reports[1]);await close(tester);
+  });
+  testWidgets('access loss while reporting dismisses dialog and clears private history', (tester) async {
+    final b=ChatBackend()..stored=ChatMessage({'id':'8','sender_id':'other','request_id':'old','body':'Selected evidence'});
+    await open(tester,b);await tester.tap(find.byKey(const ValueKey('report-message-8')));await tester.pumpAndSettle();
+    b.failRead=true;await tester.pump(const Duration(seconds:3));await tester.pumpAndSettle();
+    expect(find.text('Selected evidence'),findsNothing);expect(find.text('Şikâyeti gönder'),findsNothing);
+    expect(find.byType(ChatScreen),findsOneWidget);expect(b.reports,isEmpty);await close(tester);
+  });
+  testWidgets('pre-background read cannot restore cleared message history', (tester) async {
+    final message=ChatMessage({'id':'8','sender_id':'other','request_id':'old','body':'Stale private message'});
+    final b=ChatBackend()..stored=message;await open(tester,b);
+    final delayed=Completer<MessagePage>();b.pendingRead=delayed.future;
+    await tester.pump(const Duration(seconds:3));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);await tester.pump();
+    expect(find.text('Stale private message'),findsNothing);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);await tester.pump();
+    b.pendingRead=null;b.stored=null;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);await tester.pumpAndSettle();
+    delayed.complete(MessagePage([message],false));await tester.pumpAndSettle();
+    expect(find.text('Stale private message'),findsNothing);await close(tester);
+  });
+
 }

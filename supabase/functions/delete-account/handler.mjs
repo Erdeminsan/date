@@ -1,3 +1,4 @@
+import {readJsonBody} from '../_shared/request-body.mjs';
 const headers = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
@@ -17,10 +18,8 @@ export async function handleDelete(request, createClients) {
   if (!token) return reply(401, 'AUTH_REQUIRED');
   let body;
   try {
-    const text = await request.text();
-    if (text.length > 4096) return reply(413, 'BODY_TOO_LARGE');
-    body = JSON.parse(text);
-  } catch { return reply(400, 'INVALID_REQUEST'); }
+    body = await readJsonBody(request,4096);
+  } catch (error) { return reply(error.status??400,error.code??'INVALID_REQUEST'); }
   if (!body || body.confirmation !== 'DELETE' || typeof body.password !== 'string' || body.password.length < 1 || body.password.length > 256) {
     return reply(400, 'CONFIRMATION_REQUIRED');
   }

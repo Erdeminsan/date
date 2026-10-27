@@ -1,8 +1,10 @@
 # PlayMatch kapalı TestFlight betası
 
 Durum: yayın hazırlığı. Henüz imzalı IPA üretilmedi veya Apple'a yüklenmedi.
-Bu sürüm kayıt/profil/beğeni/eşleşme, şikâyet/engel/hesap silme ve tek kişilik
-Sky Hop antrenmanını kapsar. Çok oyunculu oyun, sohbet ve profil kilidi açma yoktur.
+Kodda hesap/profil/eşleşme, kalıcı sohbet, iki kişilik Sky Hop, doğrulanmış
+sonuçla bilgi açılması ve moderasyon/itiraz/kanıt akışları bulunur.
+Tam tur sonuçları uygulamalar kapalıyken sunucuda tamamlanabilir.
+Fiziksel kabul listesi: [DEVICE_ACCEPTANCE.md](DEVICE_ACCEPTANCE.md).
 
 ## Araçlar
 

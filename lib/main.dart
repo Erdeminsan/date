@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'backend/repository.dart';
 import 'demo_app.dart' show PlayMatchApp;
 import 'features/auth_panel.dart';
-import 'features/member_home.dart';
+import 'features/account_access_gate.dart';
 import 'features/password_recovery.dart';
 
 const authCallback = 'com.erdeminsan.playmatch://auth-callback';
@@ -116,7 +116,7 @@ class _SessionGateState extends State<SessionGate> {
         );
       }
       if (session != null)
-        return MemberHome(
+        return AccountAccessGate(
           key: ValueKey(session.user.id),
           backend: Backend(widget.client),
         );

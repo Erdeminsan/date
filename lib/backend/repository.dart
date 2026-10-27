@@ -1,4 +1,6 @@
 import 'dart:math';
+import 'dart:convert';
+import 'package:crypto/crypto.dart' as crypto;
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -67,6 +69,53 @@ class GameRoom {
   final String id, inviterId, status;
   final DateTime expiresAt;
   bool get active => ['invited','accepted','countdown','running','awaiting_result'].contains(status);
+}
+class MessageEvidence {
+  const MessageEvidence(this.body,this.sentAt,this.capturedAt);
+  final String body;
+  final DateTime sentAt,capturedAt;
+  static MessageEvidence? fromJson(Map<String,dynamic> data) => data['message_body']==null ? null : MessageEvidence(
+    data['message_body'] as String,DateTime.parse(data['message_created_at'] as String),DateTime.parse(data['evidence_captured_at'] as String));
+}
+class ModerationReport {
+  ModerationReport(Map<String,dynamic> data):id=data['id'] as String,reporterName=data['reporter_name'] as String,
+    reportedName=data['reported_name'] as String,reason=data['reason'] as String,decision=data['decision'] as String?,note=data['review_note'] as String?,evidence=MessageEvidence.fromJson(data),photoReportId=data['photo_report_id'] as String?;
+  final String id,reporterName,reportedName,reason;
+  final String? decision,note;
+  final MessageEvidence? evidence;
+  final String? photoReportId;
+}
+class ModerationSanction {
+  ModerationSanction(Map<String,dynamic> data):id=data['id'] as String,reportedName=data['reported_name'] as String,
+    reason=data['reason'] as String,expiresAt=DateTime.parse(data['expires_at'] as String),
+    active=data['active'] as bool,liftReason=data['lift_reason'] as String?,publicNotice=data['public_notice'] as String?;
+  final String id,reportedName,reason;
+  final DateTime expiresAt;
+  final bool active;
+  final String? liftReason,publicNotice;
+}
+class SanctionAppeal {
+  SanctionAppeal(Map<String,dynamic> data):id=data['id'] as String,sanctionId=data['sanction_id'] as String,
+    appealId=data['appeal_id'] as String?,expiresAt=DateTime.parse(data['expires_at'] as String),
+    active=data['active'] as bool,body=data['body'] as String?,decision=data['decision'] as String?,
+    response=data['response'] as String?,displayName=data['display_name'] as String?,internalReason=data['internal_reason'] as String?,publicNotice=data['public_notice'] as String?,evidence=MessageEvidence.fromJson(data),photoReportId=data['photo_report_id'] as String?;
+  final String id,sanctionId;
+  final MessageEvidence? evidence;
+  final String? photoReportId;
+  final String? appealId,body,decision,response,displayName,internalReason,publicNotice;
+  final DateTime expiresAt;
+  final bool active;
+}
+class DiscoveryPreferences {
+  DiscoveryPreferences(Map<String,dynamic> data):minAge=data['min_age'] as int,maxAge=data['max_age'] as int?;
+  final int minAge;
+  final int? maxAge;
+}
+class MatchUnlocks {
+  MatchUnlocks(Map<String,dynamic> data)
+    : level = data['unlock_level'] as int, city = data['city'] as String?, interests = data['interests'] as String?;
+  final int level;
+  final String? city, interests;
 }
 class GameResult {
   GameResult(Map<String,dynamic> data)
@@ -208,6 +257,54 @@ class Backend {
     return RoomSnapshot(Map<String, dynamic>.from(data as Map));
   }
 
+  Future<void> signOutLocal() => client.auth.signOut(scope: SignOutScope.local);
+  Future<bool> accountRestricted() async => await client.rpc('account_restricted') as bool;
+  Future<FeedPage<SanctionAppeal>> ownSanctions({FeedCursor? before}) async {
+    final data=await client.rpc('own_sanctions_v2',params:{'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    return decodeFeedPage<SanctionAppeal>(data as List,SanctionAppeal.new);
+  }
+  Future<void> submitAppeal(String sanctionId,String body) async {
+    await client.rpc('submit_sanction_appeal',params:{'p_sanction':sanctionId,'p_body':body});
+  }
+  Future<FeedPage<SanctionAppeal>> moderationAppeals({bool reviewed=false,FeedCursor? before}) async {
+    final data=await client.rpc('moderation_appeals_v4',params:{'p_reviewed':reviewed,'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    return decodeFeedPage<SanctionAppeal>(data as List,SanctionAppeal.new);
+  }
+  Future<void> reviewAppeal(String appealId,String decision,String response) async {
+    await client.rpc('review_sanction_appeal',params:{'p_appeal':appealId,'p_decision':decision,'p_response':response});
+  }
+
+  Future<bool> moderationAccess() async => await client.rpc('moderation_access') as bool;
+  Future<FeedPage<ModerationReport>> moderationReports({String status='pending',FeedCursor? before}) async {
+    final data=await client.rpc('moderation_reports_v3',params:{'p_status':status,'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    return decodeFeedPage<ModerationReport>(data as List,ModerationReport.new);
+  }
+  Future<void> reviewReport(String reportId,String decision,String note) async {
+    await client.rpc('review_report',params:{'p_report':reportId,'p_decision':decision,'p_note':note});
+  }
+
+  Future<void> suspendReportedAccount(String reportId,int hours,String reason,String publicNotice) async {
+    await client.rpc('suspend_reported_account',params:{'p_report':reportId,'p_hours':hours,'p_reason':reason,'p_public_notice':publicNotice});
+  }
+  Future<void> liftAccountSanction(String id,String reason) async {
+    await client.rpc('lift_account_sanction',params:{'p_sanction':id,'p_reason':reason});
+  }
+  Future<FeedPage<ModerationSanction>> moderationSanctions({FeedCursor? before}) async {
+    final data=await client.rpc('moderation_sanctions_v2',params:{'p_before_time':before?.createdAt,'p_before_id':before?.id});
+    return decodeFeedPage<ModerationSanction>(data as List,ModerationSanction.new);
+  }
+
+  Future<DiscoveryPreferences> discoveryPreferences() async => DiscoveryPreferences(Map<String,dynamic>.from(await client.rpc('get_discovery_preferences') as Map));
+  Future<void> saveDiscoveryPreferences(int minAge,int? maxAge,{required String expectedUserId}) async {
+    if(userId!=expectedUserId)throw const AuthException('Session changed');
+    await client.rpc('set_discovery_preferences',params:{'p_min':minAge,'p_max':maxAge});
+  }
+
+  Future<MatchUnlocks> matchUnlocks(String matchId) async {
+    final data = await client.rpc('match_unlocks', params: {'p_match': matchId});
+    return MatchUnlocks(Map<String,dynamic>.from(data as Map));
+  }
+
   Future<GameResult?> gameResult(String roomId, {bool finalize = false}) async {
     final dynamic data;
     if (finalize) {
@@ -265,6 +362,24 @@ class Backend {
         response.data['deleted'] != true) {
       throw StateError('Account deletion was not confirmed');
     }
+  }
+
+  Future<void> reportPhoto({required String targetId,required String path,required String requestId,required String reason,required String digest}) async {
+    final result=await client.functions.invoke('report-photo',body:{'target_id':targetId,'path':path,'request_id':requestId,'reason':reason,'sha256':digest});
+    if(result.status!=200 || result.data is! Map || result.data['status']!='completed')throw StateError('Photo report not confirmed');
+  }
+  Future<bool> moderationPhotoAccess(String reportId) async => await client.rpc('moderation_photo_access',params:{'p_report':reportId}) as bool;
+  Future<Uint8List> moderationPhoto(String reportId) async {
+    final data=Map<String,dynamic>.from(await client.rpc('moderation_photo_evidence',params:{'p_report':reportId}) as Map);
+    final encoded=data['base64'] as String;
+    if(encoded.length>2796204)throw StateError('Image exceeds limit');
+    final bytes=base64Decode(encoded);
+    if(bytes.length>2097152 || crypto.sha256.convert(bytes).toString()!=data['sha256'])throw StateError('Image verification failed');
+    return bytes;
+  }
+
+  Future<void> reportMessage(String matchId,String messageId,String reason) async {
+    await client.rpc('report_message',params:{'p_match':matchId,'p_message':messageId,'p_reason':reason});
   }
 
   Future<void> report(String id, String reason) async {

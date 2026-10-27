@@ -220,7 +220,7 @@ class _AuthPanelState extends State<AuthPanel> {
                   ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Kapalı geliştirme betası. İki kişilik oyun ve mesajlaşma henüz kullanıma açık değil.',
+                  'Kapalı test sürümü. Eşleş, mesajlaş ve Sky Hop oyna.',
                   style: TextStyle(color: Colors.white60),
                 ),
               ],

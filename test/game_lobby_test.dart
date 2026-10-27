@@ -29,6 +29,42 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   }
+  testWidgets('hung lobby read times out and retry ignores late response', (tester) async {
+    final old = Completer<RoomSnapshot>();
+    var calls = 0;
+    final backend = RoomBackend((action, room) async =>
+      ++calls == 1 ? old.future : state(null));
+    await tester.pumpWidget(MaterialApp(home: GameLobby(backend: backend,
+      connection: const Connection('match', 'other', 'Other'))));
+    await tester.pump(const Duration(seconds: 7));
+    await tester.pumpAndSettle();
+    expect(find.text('Tekrar dene'), findsOneWidget);
+    await tester.tap(find.text('Tekrar dene'));
+    await tester.pumpAndSettle();
+    expect(find.text('Aktif davet yok'), findsOneWidget);
+    old.complete(state('invited'));
+    await tester.pumpAndSettle();
+    expect(find.text('Kabul et'), findsNothing);
+    await close(tester);
+  });
+  testWidgets('resume refreshes lobby without waiting for stale read', (tester) async {
+    final old = Completer<RoomSnapshot>();
+    var calls = 0;
+    final backend = RoomBackend((action, room) async =>
+      ++calls == 1 ? old.future : state(null));
+    await tester.pumpWidget(MaterialApp(home: GameLobby(backend: backend,
+      connection: const Connection('match', 'other', 'Other'))));
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(calls, 2);
+    old.complete(state('invited'));
+    await tester.pumpAndSettle();
+    expect(find.text('Aktif davet yok'), findsOneWidget);
+    expect(find.text('Kabul et'), findsNothing);
+    await close(tester);
+  });
   testWidgets('incoming invite accepts once and sends the exact room id', (tester) async {
     final pending = Completer<RoomSnapshot>();
     var accepts = 0;

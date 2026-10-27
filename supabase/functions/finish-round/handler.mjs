@@ -1,3 +1,4 @@
+import {readJsonBody} from '../_shared/request-body.mjs';
 import {verifyRound} from '../_shared/round-verifier.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store',
   'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
@@ -10,10 +11,8 @@ export async function handleResult(request,createClients) {
   if(!authorization.startsWith('Bearer ')||authorization.length>8192||!authorization.slice(7).trim()) return reply(401,{error:'AUTH_REQUIRED'});
   let body;
   try {
-    const text=await request.text();
-    if(text.length>2048) return reply(413,{error:'BODY_TOO_LARGE'});
-    body=JSON.parse(text);
-  } catch { return reply(400,{error:'INVALID_REQUEST'}); }
+    body=await readJsonBody(request,2048);
+  } catch (error) { return reply(error.status??400,{error:error.code??'INVALID_REQUEST'}); }
   if(!body || typeof body.room_id!=='string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.room_id)) return reply(400,{error:'INVALID_REQUEST'});
   try {
     const {auth,admin}=createClients();

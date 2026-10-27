@@ -9,13 +9,13 @@
 | Alan | 1.0.0 kabulü | Mevcut durum |
 | --- | --- | --- |
 | Üyelik | Kayıt, doğrulama, giriş/çıkış, sıfırlama, hesap silme; gerçek cihazda soğuk/sıcak başlangıç | Kod var; gerçek e-posta/cihaz kabulü eksik |
-| Profil | 18+ profil, düzenleme, fotoğraf, görünürlük ve keşfet tercihleri | Metin profili ve özel fotoğraf akışı main içinde; gerçek cihaz kabulü ve tercihler eksik |
-| Keşfet | Tercihlere uygun, engelli/yasaklı hesapları dışlayan, devamı yüklenebilen liste | 20 kayıtlık sayfalama var; tercihler eksik |
-| Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni ve sayfalama var; ayrılma main içinde; otomatik güncelleme eksik |
-| Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Davet ve bekleme odası main içinde; hazır olma ve ortak zamanlı tur main içinde; sunucu sonucu/kopuş kabulü eksik |
-| Sonuç ve bilgi açılması | Sunucunun doğruladığı sonuç; aynı sonucu tekrar göndermek güvenli; yalnızca ilgili eşleşmeye erişim | Replay, canlı sonuç servisi ve kazanana özel erişim geliştirme paketinde; cihaz kabulü eksik |
+| Profil | 18+ profil, düzenleme, fotoğraf, görünürlük ve keşfet tercihleri | Metin/özel fotoğraf akışı ve yaş tercihi var; gerçek cihaz kabulü eksik |
+| Keşfet | Tercihlere uygun, engelli/yasaklı hesapları dışlayan, devamı yüklenebilen liste | 20 kayıtlık sayfalama ve yaş tercihi var; cihaz kabulü ve diğer tercihlerin kapsamı açık |
+| Eşleşme | Karşılıklı beğeni, limit, eşleşmeden ayrılma, sayfalama ve otomatik güncelleme | Karşılıklı beğeni, sayfalama, ayrılma ve otomatik yenileme kodda; cihaz kabulü eksik |
+| Ortak oyun | Davet, kabul/ret/iptal, oda, ortak başlangıç, bağlantı kopması ve zaman aşımı | Davet, ortak tur ve bağımsız sunucu sonuç işçisi var; fiziksel kopuş/yük kabulü eksik |
+| Sonuç ve bilgi açılması | Sunucunun doğruladığı sonuç; aynı sonucu tekrar göndermek güvenli; yalnızca ilgili eşleşmeye erişim | Replay, kalıcı sonuç, tekil ödül ve bilgi ekranı var; cihaz kabulü eksik |
 | Mesajlaşma | Yalnızca izinli eşleşmeler; kalıcı mesajlar, sayfalama, otomatik güncelleme, gönderim hatası/tekrar; engel/yasak kontrolü | Metin sohbeti main içinde; 3 sn polling, güvenli retry ve erişim kontrolleri var; gerçek cihaz kabulü eksik |
-| Güvenlik/moderasyon | Şikâyet inceleme ve yaptırım, denetim kaydı, silme/saklama politikası, kötüye kullanım sınırları | Engelle/şikâyet kaydı var; yönetim akışı eksik |
+| Güvenlik/moderasyon | Şikâyet inceleme ve yaptırım, denetim kaydı, silme/saklama politikası, kötüye kullanım sınırları | İnceleme, yaptırım, itiraz, mesaj/fotoğraf kanıtı ve kalıcı kota var; operatör/saklama/bildirim işleri açık |
 | Kullanıcı bilgilendirmesi | Gerçek destek ve gizlilik bağlantıları, kullanım koşulları, veri kullanımı ve hesap silme açıklaması | İşletmeci bilgileri/metinler eksik |
 | Yayın | Otomatik testler, iki gerçek hesap, fiziksel iPhone, ağ kopması, imzalı arşiv ve TestFlight kurulumu | CI geçti; cihaz/imza/kabul eksik |
 
@@ -24,7 +24,7 @@ Onaylanan kural: yalnız kazananın ilk galibiyetinde rakibinin şehri, ikinci
 galibiyetinde ilgi alanları açılır. Eşitlikte bilgi açılmaz. Mesajlaşma eşleşme oluşunca iki tarafa da açılır;
 oyun ön koşulu yoktur.
 
-## Uygulama sırası
+## Tarihsel geliştirme sırası ve paket kayıtları
 
 1. Doğrulanmış güvenlik hataları, hesap akışı ve regresyon testleri.
 2. Keşfet/eşleşme sayfalaması, toplu veri sorguları, profil fotoğrafı ve tercihler.
@@ -115,3 +115,76 @@ Sıradaki iş canlı girdi kaydı ve sonuç/ödül işlemidir. Doğrulama çekir
 çekirdek testi canlı yetkilendirme veya ödül işleminin tamamlandığı anlamına gelmez.
 
 Doğrulanmış sonuç ve erişim paketi: [ROUND_RESULTS.md](ROUND_RESULTS.md).
+
+Otomatik eşleşme yenilemesi: [LIVE_MATCHES.md](LIVE_MATCHES.md).
+
+Keşfet yaş tercihleri: [DISCOVERY_PREFERENCES.md](DISCOVERY_PREFERENCES.md).
+
+Şikâyet inceleme paketi: [MODERATION_REVIEW.md](MODERATION_REVIEW.md).
+
+### 26 Ekim: moderasyon kısıtlama paketi
+- Gerekçeli 24 saat/7 gün kısıtlama, sunucu erişim denetimi, ayrı kaldırma kaydı,
+  idempotent tekrarlar ve rapor silinmesine dayanıklı kısıtlama listesi eklendi.
+- Oyun sonuç servisinde JWT subject olmadan katılımcı doğrulaması düzeltildi.
+- Kullanıcı kısıtlama durumu/itiraz ekranı, bildirim ve gerçek operatör ataması
+  hâlâ açık; TestFlight için tamamlanmış kabul edilmemeli.
+
+### 26 Ekim: kullanıcı itiraz paketi
+- Hesap erişim kapısı, kısıtlı kullanıcı ekranı, kendi kayıtlarını/yanıtlarını
+  görme ve değiştirilemeyen tek itiraz gönderme eklendi.
+- Moderatör itiraz kuyruğu ve kullanıcıya açık yanıt eklendi; kabul ile ilgili
+  kısıtlama atomik kaldırılır. Diğer aktif kayıtlar korunur.
+- Ayrıntılar: MODERATION_APPEALS.md. İlk karar için kullanıcıya özel gerekçe,
+  operatör/kanıt/retention/bildirim ve gerçek cihaz/TestFlight kabulü hâlâ açık.
+
+### 26 Ekim: kullanıcıya karar açıklaması
+- Yeni kısıtlamalarda kullanıcıya özel açıklama ayrı zorunlu alan; iç gerekçeden
+  otomatik kopyalanmaz. Hesap durumu, kısıtlama ve itiraz ekranlarında gösterilir.
+- Eski kayıtlar açıklamasız kalabilir ve itiraz yolu açıktır; eski istemci yeni
+  kısıtlama vermek için güncellenmelidir. Ayrıntılar MODERATION_APPEALS.md'de.
+- Mesaj/fotoğraf kanıtı, gerçek operatör, saklama/bildirim operasyonları, gerçek
+  cihaz kabulü ve imzalı TestFlight dağıtımı sürüm öncesi açık işlerdir.
+
+### 26 Ekim: şikâyete mesaj kanıtı
+- Kullanıcı karşı tarafın seçili mesajını gerekçeyle şikâyet edebilir. Sunucu
+  üyelik/mesaj sahipliğini doğrular ve metni kaynaktan alır; aynı rapor tekrarı
+  idempotenttir. Moderatör şikâyet ve itiraz ekranlarında kanıtı görür.
+- Unmatch/block kanıtı silmez; rapor/hesap silme mevcut cascade kurallarını izler.
+  Ayrıntılar ve saklama sınırlamaları MESSAGE_REPORT_EVIDENCE.md'de.
+- Fotoğraf kanıtı ve gerçek operatör/cihaz/saklama/bildirim/dağıtım işleri açık.
+
+### 26 Ekim: profil fotoğrafı kanıtı
+- Profil fotoğrafını önizleyerek şikâyet etme; sunucudan kopyalama, önizleme hash'i,
+  kaynak nesne sürümü, atomik rapor/kopya ve değişmez tekrar eklendi.
+- Moderatör şikâyet/itiraz kuyruğundan korumalı fotoğraf görüntüleyicisine gider.
+  Liste görsel taşımaz; rapor/hesap silme kopyayı da siler.
+- Depolama, saklama ve gerçek kabul sınırları PHOTO_REPORT_EVIDENCE.md'de.
+- Gerçek operatör, kota geçmişi, saklama/bildirim operasyonları, SMTP, fiziksel
+  cihaz kabulü ve imzalı TestFlight dağıtımı açık.
+
+### 27 Ekim: şikâyet kotası geçmişi
+- Profil, mesaj ve fotoğraf raporları son 24 saatte 10 ortak başarılı işlem
+  sınırını ayrı özel olay tablosundan hesaplar. Rapor/hedef hesap silinmesi
+  kotayı geri açmaz; şikâyetçinin hesabı silinince sayaç temizlenir.
+- Migration 20261027032216 geliştirme ortamına uygulandı.
+  Ayrıntılar ve saklama sınırları REPORT_QUOTA.md'de.
+- Genel profil şikâyetinin belirsiz yanıt tekrarını request ID ile tekilleştirme,
+  çok bağlantılı yarış kabulü ve global zamanlanmış temizlik ayrıca açıktır.
+
+### 27 Ekim: bağımsız oyun sonucu
+- Tam girdili tur kalıcı iş kuyruğuna atomik alınır; istemci kapansa da cron/Edge
+  sonucu hesaplar. Eksik tur ödülsüzdür; normal cancel tam gönderilmiş turu silmez.
+- Lease/yeniden deneme, tekil sonuç, süre aşımı ve kuyruk geçmişi temizliği eklendi.
+- Sentetik geliştirme verisiyle gerçek cron → Edge → sonuç zinciri doğrulandı;
+  iki fiziksel cihaz ve çok bağlantılı yük kabulü hâlâ açıktır.
+- Son canlı güvenlik kontrolünde Auth sızmış parola korumasının kapalı olduğu
+  görüldü; yayın öncesi Auth yapılandırması kapsamında değerlendirilmelidir.
+
+### 27 Ekim: cihaz kabulüne hazırlık
+- Giriş ekranı, README ve TestFlight/oyun belgelerindeki eski özellik durumu
+  düzeltildi; başlangıç komutu main dalını kullanır.
+- Hesap silme/ilişkili kayıt temizliği için eksik yedi foreign key indeksi eklendi.
+- Fiziksel kabul senaryoları DEVICE_ACCEPTANCE.md'de, sonuçları boş olarak hazır.
+- Açık: profil şikâyetinde belirsiz yanıt tekrarının request ID ile tekilleştirilmesi,
+  SMTP/redirect ve test hesapları, gerçek moderatör, destek/gizlilik/koşullar,
+  bildirim kapsamı, saklama/alarmlar, yük testi ve imzalı TestFlight dağıtımı.

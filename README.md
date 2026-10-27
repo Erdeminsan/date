@@ -2,31 +2,34 @@
 
 Flutter + Flame ile oyun üzerinden tanışma uygulaması. Geçici ürün adı PlayMatch.
 
-## 0.3 — Hesap yönetimi
+## Güncel durum — fiziksel cihaz kabulü
 
-Gerçek e-posta/şifre oturumu, profil oluşturma/düzenleme, keşfet, karşılıklı
-beğeniyle eşleşme, görünürlük, engelleme ve şikâyet kodu eklendi.
-Şehir/doğum tarihi/ilgi alanları sadece sahibine açıktır. Oyun şu an antrenmandır;
-gerçek profil bilgisi açmaz. Önceki çevrimdışı demo ayrı modda korunur.
+Sürüm 0.3.0+3; 1.0.0 ve TestFlight dağıtımı henüz yapılmadı.
+Kodda e-posta/şifre hesabı, özel profil fotoğrafı, yaş tercihli keşfet,
+karşılıklı eşleşme, kalıcı sohbet, engelleme/şikâyet, hesap silme,
+moderatör inceleme/yaptırım/itiraz ve mesaj/fotoğraf kanıtı bulunur.
 
-**Durum:** Supabase şeması canlı projede. GitHub Actions'ta Flutter analizi,
-widget testleri ve Xcode 26 ile imzasız iOS release derlemesi geçti. İmzalı IPA,
-fiziksel cihaz kabulü ve TestFlight yüklemesi henüz yok.
+Sky Hop davet, ortak başlangıç ve sunucuda doğrulanan iki kişilik tur içerir.
+İlk galibiyet rakibin şehrini, ikinci galibiyet ilgi alanlarını açar;
+doğum tarihi/e-posta açılmaz. Sohbet için oyun kazanmak gerekmez.
+Tam gönderilmiş turlar uygulamalar kapalıyken de sunucu işçisiyle tamamlanır.
+Önceki çevrimdışı demo ayrı modda korunur.
 
-Ayarlar ekranında engellenen kişileri yönetme ve şifre + SİL onayıyla hesabı
-kalıcı silme eklendi. Hesap silme servisi canlıda; gerçek hesapla uçtan uca
-silme testi henüz yapılmadı.
+CI analiz/testleri ve imzasız iOS derlemesi başarılıdır; bu, imzalı IPA veya
+gerçek cihaz kabulü değildir. SMTP/redirect, iki gerçek test hesabı, fiziksel
+iPhone, moderatör operatörü ve mağaza/destek metinleri ayrıca doğrulanmalıdır.
 
-TestFlight hazırlığı ve mevcut yayın engelleri: [TESTFLIGHT.md](docs/TESTFLIGHT.md).
-Şifre sıfırlama ekranı ve native dönüş bağlantısı eklendi; dashboard redirect/SMTP
-ayarları ve gerçek cihaz testi hâlâ gerekir. CI Flutter 3.38.0 ile çalışır.
+- [Fiziksel cihaz test listesi](docs/DEVICE_ACCEPTANCE.md)
+- [TestFlight araçlar, imzalama ve yükleme](docs/TESTFLIGHT.md)
+- [1.0.0 kapsamı ve açık işler](docs/V1_SCOPE.md)
+- [Sunucu sonuç işçisi](docs/SERVER_FINALIZATION_PLAN.md)
 
 ## Başlatma
 
 ```bash
 git clone https://github.com/Erdeminsan/date.git
 cd date
-git switch feature/testflight-readiness
+git switch main
 bash scripts/setup.sh
 flutter run --dart-define-from-file=config/development.json
 ```

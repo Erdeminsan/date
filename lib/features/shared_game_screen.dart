@@ -90,7 +90,12 @@ class _SharedGameScreenState extends State<SharedGameScreen> with WidgetsBinding
     round.cancel(); sender.cancel(); game.pauseEngine(); timer?.cancel(); inputTimer?.cancel();
     setState(() { stopped = true; notice = text; });
     try {
-      if (widget.backend.userId == owner) await widget.backend.gameRoom(widget.connection.id, action: 'cancel', roomId: widget.snapshot.room!.id).timeout(const Duration(seconds: 4));
+      if (widget.backend.userId == owner) {
+        final response = await widget.backend.gameRoom(widget.connection.id, action: 'cancel', roomId: widget.snapshot.room!.id).timeout(const Duration(seconds: 4));
+        if (mounted && ['awaiting_result','completed'].contains(response.room?.status)) {
+          setState(() => notice = 'Tur girdileri alındı. Sonuç sunucuda doğrulanıyor; odadan kontrol edebilirsin.');
+        }
+      }
     } catch (_) { /* Server expiry closes an unreachable room. */ }
   }
   @override

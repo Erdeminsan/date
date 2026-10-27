@@ -92,3 +92,13 @@ test('every golden vector produces the same score and hits through packet valida
     }
   }
 });
+test('trusted queued deadline extends computation time but never input receipt windows',()=>{
+  const f=fixture();f.nowMs+=60000;f.resultDeadlineMs=f.room.endsAtMs+86400000;
+  assert.equal(verifyRound(f).winnerId,'a');
+  const late=structuredClone(f);late.streams[0].packets[44].receivedAtMs=late.nowMs;
+  assert.throws(()=>verifyRound(late),/receipt window/);
+  for(const deadline of [f.room.endsAtMs,f.room.endsAtMs+86400001,NaN]) {
+    assert.throws(()=>verifyRound({...f,resultDeadlineMs:deadline}),/result deadline/);
+  }
+  assert.throws(()=>verifyRound({...f,nowMs:f.resultDeadlineMs}),/result window/);
+});
