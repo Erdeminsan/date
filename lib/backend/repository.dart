@@ -382,10 +382,10 @@ class Backend {
     await client.rpc('report_message',params:{'p_match':matchId,'p_message':messageId,'p_reason':reason});
   }
 
-  Future<void> report(String id, String reason) async {
+  Future<void> report(String id, String reason, {required String requestId}) async {
     await client.rpc(
-      'report_profile',
-      params: {'p_target': id, 'p_reason': reason.trim()},
+      'report_profile_once',
+      params: {'p_target': id, 'p_reason': reason.trim(), 'p_request': requestId},
     );
   }
 }

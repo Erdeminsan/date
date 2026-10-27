@@ -57,3 +57,7 @@ Her satır için Geçti/Kaldı, cihaz ve hata kaydı ekleyin. Boş satır test e
 Cihaz kabulü geçmesi tek başına yayın izni değildir. Gizlilik/destek/koşullar,
 operatör sorumluluğu, saklama politikası ve App Store Connect bilgileri ayrıca
 tamamlanmalı; TestFlight kurulumu gerçekten denenmeden tamamlandı işaretlenmemeli.
+
+Profil şikâyeti tekrar testi: gönderim yanıtı kaybolduğunda açık pencereden aynı
+şikâyeti tekrar dene. Tek rapor ve tek kota olayı oluşmalı; arka plana geçiş
+sonrası tekrar da aynı sonucu vermeli. Pencere kapanınca yeni istek oluşur.
