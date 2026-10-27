@@ -1,3 +1,4 @@
+import {readJsonBody} from '../_shared/request-body.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*',
   'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS'};
 const reply=(status,body)=>new Response(JSON.stringify(body),{status,headers});
@@ -10,14 +11,9 @@ export async function handlePhotoReport(request,createClients){
   if(!authHeader.startsWith('Bearer ')||authHeader.length>8192||!authHeader.slice(7).trim())return reply(401,{error:'AUTH_REQUIRED'});
   let body;
   try{
-    const reader=request.body?.getReader();let length=0;const chunks=[];
-    if(!reader)return reply(400,{error:'INVALID_REQUEST'});
-    while(true){const {done,value}=await reader.read();if(done)break;length+=value.length;
-      if(length>8192){await reader.cancel();return reply(413,{error:'BODY_TOO_LARGE'});}chunks.push(value);}
-    const raw=new Uint8Array(length);let offset=0;for(const chunk of chunks){raw.set(chunk,offset);offset+=chunk.length;}
-    body=JSON.parse(new TextDecoder().decode(raw));
+    body=await readJsonBody(request,8192);
   }
-  catch{return reply(400,{error:'INVALID_REQUEST'});}
+  catch(error){return reply(error.status??400,{error:error.code??'INVALID_REQUEST'});}
   if(!body||!uuid.test(body.target_id??'')||!uuid.test(body.request_id??'')||typeof body.path!=='string'||body.path.length>200||
     typeof body.reason!=='string'||[...body.reason.trim()].length<5||[...body.reason.trim()].length>1000||
     typeof body.sha256!=='string'||!/^[0-9a-f]{64}$/.test(body.sha256))return reply(400,{error:'INVALID_REQUEST'});
