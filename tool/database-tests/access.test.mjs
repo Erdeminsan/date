@@ -1124,6 +1124,34 @@ try {
     await asUser('b');
     await assert.rejects(() => db.query('select * from public.blocked_profiles()'), /AUTH_REQUIRED/);
   });
+  await check('profile request identity deduplicates before quota and rejects payload conflicts', async()=>{
+    await db.exec('reset role');
+    ids.r='99000000-0000-4000-8000-000000000071'; ids.s='99000000-0000-4000-8000-000000000072';
+    await db.query('insert into auth.users(id,email_confirmed_at) values($1,now()),($2,now())',[ids.r,ids.s]);
+    await asUser('r'); await save('Reporter'); await asUser('s'); await save('Target'); await asUser('r');
+    const request='99000000-0000-4000-8000-000000000073';
+    const call=(target,reason,key=request)=>db.query('select public.report_profile_once($1,$2,$3) as id',[target,reason,key]);
+    const first=(await call(ids.s,'Valid report')).rows[0].id;
+    assert.equal((await call(ids.s,'  Valid report  ')).rows[0].id,first);
+    await assert.rejects(()=>call(ids.s,'Changed reason'),/REPORT_CONFLICT/);
+    await assert.rejects(()=>call(ids.a,'Valid report'),/REPORT_CONFLICT/);
+    await assert.rejects(()=>call(ids.s,'Valid report',null),/INVALID_REPORT/);
+    await assert.rejects(()=>call(ids.s,'x'),/INVALID_REPORT/);
+    for(let i=0;i<9;i++)await db.query("select public.report_profile($1,'Legacy report')",[ids.s]);
+    assert.equal((await call(ids.s,'Valid report')).rows[0].id,first);
+    await assert.rejects(()=>call(ids.s,'Valid report','99000000-0000-4000-8000-000000000074'),/REPORT_LIMIT/);
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.report_events where actor_id=$1',[ids.r])).n,10);
+    assert.equal((await scalar('select count(*)::int as n from public.reports where reporter_id=$1',[ids.r])).n,10);
+    await asUser('s');
+    assert.equal((await db.query('select * from public.reports where profile_request_id=$1',[request])).rows.length,0);
+    const other=(await call(ids.r,'Different actor')).rows[0].id; assert.notEqual(other,first);
+    await db.exec('reset role;set role anon');
+    await assert.rejects(()=>call(ids.s,'Valid report'),/permission denied/);
+    await db.exec('reset role');
+    await db.query('delete from auth.users where id in ($1,$2)',[ids.r,ids.s]);
+    assert.equal((await scalar('select count(*)::int as n from public.reports where profile_request_id=$1',[request])).n,0);
+  });
   await check('every application table has RLS enabled', async () => {
     await db.exec('reset role');
     const rows=(await db.query("select relname,relrowsecurity from pg_class where relnamespace='public'::regnamespace and relkind='r'")).rows;

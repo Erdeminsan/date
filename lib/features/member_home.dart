@@ -6,6 +6,7 @@ import 'profile_editor.dart';
 import 'account_settings.dart';
 import 'profile_photo.dart';
 import 'photo_report_screen.dart';
+import 'profile_report_dialog.dart';
 import 'game_lobby.dart';
 import 'match_details_screen.dart';
 import 'chat_screen.dart';
@@ -219,40 +220,13 @@ class _MemberHomeState extends State<MemberHome> with WidgetsBindingObserver {
   }
 
   Future<void> report(String id) async {
-    var input = "";
-    final reason = await showDialog<String>(useRootNavigator: false,
+    final saved = await showDialog<bool>(
+      useRootNavigator: false,
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Profili şikâyet et'),
-            content: TextField(
-              onChanged: (value) => input = value,
-              maxLength: 1000,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'Nedenini yaz (en az 5 karakter)',
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Vazgeç'),
-              ),
-              TextButton(
-                onPressed: () {
-                  if (input.trim().length >= 5)
-                    Navigator.pop(context, input.trim());
-                },
-                child: const Text('Gönder'),
-              ),
-            ],
-          ),
+      barrierDismissible: false,
+      builder: (_) => ProfileReportDialog(backend: widget.backend, targetId: id),
     );
-    if (reason != null && mounted)
-      await act(() async {
-        await widget.backend.report(id, reason);
-        notify('Şikâyetin kaydedildi.');
-      });
+    if (saved == true && mounted) notify('Şikâyetin kaydedildi.');
   }
 
   Future<void> unmatch(Connection connection) async {

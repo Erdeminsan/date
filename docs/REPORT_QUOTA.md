@@ -11,8 +11,15 @@ Kontrol olay tablosundan yapılır. Fotoğraf hazırlığında kontrol edilen ko
 finalization içinde yeniden denetlenir. AFTER INSERT trigger raporla aynı
 transaction içinde bir olay ekler; başarısız işlem/rollback bütçe harcamaz.
 Mesaj/fotoğrafın idempotent tekrarları rapor INSERT etmediğinden ek olay üretmez.
-Genel profil şikâyeti mevcut davranışı korur: her başarılı çağrı ayrı rapordur;
-bu yol için istek UUID'siyle belirsiz yanıt tekrarını tekilleştirme ayrıca açıktır.
+Yeni uygulama profil şikâyetini report_profile_once RPC'sine istek UUID'siyle gönderir.
+Aynı kullanıcı + UUID + hedef + kırpılmış gerekçe aynı rapor kimliğini döndürür;
+kota dolmuş olsa da tekrar ek olay üretmez. Aynı UUID ile farklı içerik
+REPORT_CONFLICT verir. Tekillik indeksi ve kullanıcı kilidi eşzamanlı tekrarları
+korur. Eski report_profile RPC'si eski istemciler için korunur; eski çağrılar
+ayrı rapor sayılır. Pencere açıkken zaman aşımı/arka plan sonrası aynı UUID ve
+gerekçe korunur; pencereyi kapatıp açmak veya uygulamayı yeniden başlatmak yeni
+istektir. Kalıcı cihaz taslağı yoktur. Kimlik raporla birlikte silinir; silinen
+raporlar için süresiz tekrar garantisi verilmez.
 
 Hedef hesap veya rapor silinmesi sayacı azaltmaz. Şikâyetçinin hesabı silinirse
 olayları cascade temizlenir. Başarılı yeni raporda aynı kişinin 24 saatten eski

@@ -188,3 +188,10 @@ Keşfet yaş tercihleri: [DISCOVERY_PREFERENCES.md](DISCOVERY_PREFERENCES.md).
 - Açık: profil şikâyetinde belirsiz yanıt tekrarının request ID ile tekilleştirilmesi,
   SMTP/redirect ve test hesapları, gerçek moderatör, destek/gizlilik/koşullar,
   bildirim kapsamı, saklama/alarmlar, yük testi ve imzalı TestFlight dağıtımı.
+
+### Profil şikâyetinde belirsiz yanıt tekrarı
+
+Yeni report_profile_once RPC ve şikâyet penceresi aynı gönderimi UUID ile
+tekilleştirir. Pencere açık kaldığı sürece hata/arka plan tekrarında aynı gerekçe
+ve kimlik korunur. Eski istemci RPC'si uyumluluk için korunur. Cihaz yeniden
+başlatılınca taslak kurtarma bu pakette yoktur. Bkz. REPORT_QUOTA.md.
