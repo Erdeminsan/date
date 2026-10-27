@@ -170,3 +170,12 @@ Keşfet yaş tercihleri: [DISCOVERY_PREFERENCES.md](DISCOVERY_PREFERENCES.md).
   Ayrıntılar ve saklama sınırları REPORT_QUOTA.md'de.
 - Genel profil şikâyetinin belirsiz yanıt tekrarını request ID ile tekilleştirme,
   çok bağlantılı yarış kabulü ve global zamanlanmış temizlik ayrıca açıktır.
+
+### 27 Ekim: bağımsız oyun sonucu
+- Tam girdili tur kalıcı iş kuyruğuna atomik alınır; istemci kapansa da cron/Edge
+  sonucu hesaplar. Eksik tur ödülsüzdür; normal cancel tam gönderilmiş turu silmez.
+- Lease/yeniden deneme, tekil sonuç, süre aşımı ve kuyruk geçmişi temizliği eklendi.
+- Sentetik geliştirme verisiyle gerçek cron → Edge → sonuç zinciri doğrulandı;
+  iki fiziksel cihaz ve çok bağlantılı yük kabulü hâlâ açıktır.
+- Son canlı güvenlik kontrolünde Auth sızmış parola korumasının kapalı olduğu
+  görüldü; yayın öncesi Auth yapılandırması kapsamında değerlendirilmelidir.

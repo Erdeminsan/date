@@ -66,3 +66,9 @@ siler. Arka plana geçişte alanlar hemen temizlenir, geç gelen eski yanıtın
 bunları geri koyması generation kontrolüyle engellenir. Sonuçlar diskte tutulmaz.
 Çevrimdışı erişim yoktur. Fiziksel cihazda ekran geçişi ve erişim iptali kabulü
 henüz yapılmadı.
+
+## 27 Ekim: bağımsız sunucu sonuçlandırma
+Tam paketli turlar artık kalıcı kuyruğa girer. Yukarıdaki 15 saniyede istemci
+isteği gelmezse sonuç kaybolur sınırlaması bu turlar için giderildi. İşçi
+24 saatlik sonuçlandırma süresinde aynı replay motorunu kullanır; girdi kabul
+pencereleri değişmez. Ayrıntılar: SERVER_FINALIZATION_PLAN.md.

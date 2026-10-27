@@ -55,7 +55,24 @@ try {
       await db.query("insert into public.profiles(id,display_name) values($1,'Migration reporter'),($2,'Migration target')",[reporter,target]);
       await db.query("insert into public.reports(reporter_id,reported_id,reason,created_at) values($1,$2,'Recent report',now()),($1,$2,'Older report',now()-interval '25 hours')",[reporter,target]);
     }
-    await db.exec(await readFile(new URL(file, migrationDir), 'utf8'));
+    let migration=await readFile(new URL(file, migrationDir), 'utf8');
+    if(file.endsWith('_game_result_worker_schedule.sql')) {
+      // PGlite cannot run extension background workers. Stub only transport and
+      // scheduling; execute the production dispatcher SQL unchanged.
+      await db.exec(`create schema net;create schema cron;
+        create table net.http_request_queue(id bigint generated always as identity, url text,body jsonb,headers jsonb);
+        create function net.http_post(url text,body jsonb,headers jsonb,timeout_milliseconds integer) returns bigint
+          language sql as $$ insert into net.http_request_queue(url,body,headers) values(url,body,headers) returning id $$;
+        create table cron.jobs(name text,schedule text,command text);
+        create function cron.schedule(text,text,text) returns bigint language sql as $$
+          insert into cron.jobs values($1,$2,$3);select 1::bigint $$;`);
+      migration=migration.replace(/^create extension if not exists (pg_cron|pg_net);$/gm,'');
+    }
+    if(file.endsWith('_result_worker_transport_hardening.sql')) {
+      migration=migration.replace(/^drop extension pg_net;$/gm,'')
+        .replace(/^create extension pg_net with schema extensions;$/gm,'');
+    }
+    await db.exec(migration);
     if(quotaMigration) await check('quota migration backfills only recent surviving reports', async()=>{
       assert.equal((await scalar('select count(*)::int as n from app_private.report_events where actor_id=$1',[reporter])).n,1);
       await db.query('delete from auth.users where id=$1',[target]);
@@ -979,6 +996,114 @@ try {
     await db.query('delete from auth.users where id=$1',[ids.q]);
     assert.equal((await scalar('select count(*)::int as n from app_private.report_events where actor_id=$1',[ids.q])).n,0);
     delete ids.q;delete ids.t;
+  });
+  await check('complete input queues durable work, resists cancel and finalizes after the old deadline', async()=>{
+    ids.q='99000000-0000-4000-8000-000000000050';ids.t='99000000-0000-4000-8000-000000000051';
+    await db.exec('reset role');
+    await db.query('insert into auth.users(id,email_confirmed_at) values($1,now()),($2,now())',[ids.q,ids.t]);
+    await asUser('q');await save('Queue player');await asUser('t');await save('Queue opponent');
+    await db.exec('reset role');
+    const match=(await scalar('insert into public.matches(user_low,user_high) values($1,$2) returning id',[ids.q,ids.t])).id;
+    const room=(await scalar("insert into public.game_rooms(match_id,inviter_id,status,ready_low,ready_high,seed,starts_at,ends_at,expires_at) values($1,$2,'running',true,true,42,now()-interval '45 seconds',now(),now()+interval '15 seconds') returning id",[match,ids.q])).id;
+    // Use one timestamp for the exact 45-second schedule constraint.
+    await db.query("update public.game_rooms set ends_at=starts_at+interval '45 seconds' where id=$1",[room]);
+    await db.query(`insert into app_private.game_input_packets(room_id,player_id,sequence,flaps,received_at)
+      select r.id,p.id,n,array[]::integer[],r.starts_at+(n+1)*interval '1 second'
+      from public.game_rooms r cross join unnest($2::uuid[]) p(id) cross join generate_series(0,44) n
+      where r.id=$1 and not(p.id=$3 and n=44)`,[room,[ids.q,ids.t],ids.t]);
+    assert.equal((await scalar('select count(*)::int as n from app_private.game_result_jobs where room_id=$1',[room])).n,0);
+    await asUser('t');await db.exec('begin');
+    await db.query('select public.submit_game_input($1,44,array[]::integer[])',[room]);
+    await db.exec('rollback;reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.game_result_jobs where room_id=$1',[room])).n,0);
+    assert.equal((await scalar('select count(*)::int as n from app_private.game_input_packets where room_id=$1',[room])).n,89);
+    await asUser('t');await db.query('select public.submit_game_input($1,44,array[]::integer[])',[room]);
+    await db.query('select public.submit_game_input($1,44,array[]::integer[])',[room]);
+    await assert.rejects(()=>db.query('select * from app_private.game_result_jobs'),/permission denied/);
+    await assert.rejects(()=>db.query('select public.prepare_queued_game_result($1,$2)',[room,ids.q]),/permission denied/);
+    assert.equal((await scalar("select public.game_room_action($1,'cancel',$2) as r",[match,room])).r.room.status,'awaiting_result');
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.game_result_jobs where room_id=$1',[room])).n,1);
+    await db.query("update public.game_rooms set starts_at=starts_at-interval '1 minute',ends_at=ends_at-interval '1 minute',expires_at=expires_at-interval '1 minute' where id=$1",[room]);
+    await db.query("update app_private.game_input_packets set received_at=received_at-interval '1 minute' where room_id=$1",[room]);
+    await db.query("update app_private.game_result_jobs set not_before=not_before-interval '1 minute',deadline=deadline-interval '1 minute',next_attempt_at=next_attempt_at-interval '1 minute' where room_id=$1",[room]);
+    const job=(await db.query('select * from app_private.claim_game_result_dispatches()')).rows.find(j=>j.room_id===room);
+    assert.ok(job.delivery_token);
+    assert.ok(!(await db.query('select * from app_private.claim_game_result_dispatches()')).rows.some(j=>j.room_id===room));
+    await db.exec('set role service_role');
+    await assert.rejects(()=>db.query('select public.prepare_queued_game_result($1,$2)',[room,ids.q]),/JOB_UNAVAILABLE/);
+    const prepared=(await scalar('select public.prepare_queued_game_result($1,$2) as r',[room,job.delivery_token])).r;
+    assert.ok(prepared.nowMs>=prepared.room.endsAtMs+15000);
+    const verified=verifyRound(prepared);
+    const params=[room,job.delivery_token,...verified.results.map(r=>r.score),...verified.results.map(r=>r.hits)];
+    assert.equal((await scalar('select public.finalize_queued_game_result($1,$2,$3,$4,$5,$6) as r',params)).r.status,'completed');
+    await assert.rejects(()=>db.query('select public.finalize_queued_game_result($1,$2,$3,$4,$5,$6)',params),/JOB_UNAVAILABLE/);
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.game_results where room_id=$1',[room])).n,1);
+    assert.equal((await scalar('select status from app_private.game_result_jobs where room_id=$1',[room])).status,'completed');
+    await db.query('delete from auth.users where id in ($1,$2)',[ids.q,ids.t]);delete ids.q;delete ids.t;
+  });
+  await check('worker dispatch retries rotate capabilities, fail closed and expire overdue jobs', async()=>{
+    ids.q='99000000-0000-4000-8000-000000000060';ids.t='99000000-0000-4000-8000-000000000061';
+    await db.exec('reset role');
+    await db.query('insert into auth.users(id,email_confirmed_at) values($1,now()),($2,now())',[ids.q,ids.t]);
+    await asUser('q');await save('Worker player');await asUser('t');await save('Worker opponent');
+    await db.exec('reset role');
+    const match=(await scalar('insert into public.matches(user_low,user_high) values($1,$2) returning id',[ids.q,ids.t])).id;
+    async function makeRoom(){
+      const room=(await scalar("insert into public.game_rooms(match_id,inviter_id,status,ready_low,ready_high,seed,starts_at,ends_at,expires_at) values($1,$2,'awaiting_result',true,true,42,now()-interval '1 minute',now()-interval '15 seconds',now()+interval '24 hours') returning id",[match,ids.q])).id;
+      await db.query(`insert into app_private.game_input_packets(room_id,player_id,sequence,flaps,received_at)
+        select r.id,p.id,n,array[]::integer[],r.starts_at+(n+1)*interval '1 second'
+        from public.game_rooms r cross join unnest($2::uuid[]) p(id) cross join generate_series(0,44) n where r.id=$1`,[room,[ids.q,ids.t]]);
+      await db.query('select app_private.enqueue_complete_round($1)',[room]);return room;
+    }
+    const room=await makeRoom();
+    assert.equal((await scalar('select app_private.dispatch_game_results() as n')).n,0);
+    await db.query("insert into app_private.game_result_worker_config(endpoint,enabled) values('https://test.supabase.co/functions/v1/process-game-result',true)");
+    assert.equal((await scalar('select app_private.dispatch_game_results() as n')).n,1);
+    const req=(await scalar('select * from net.http_request_queue order by id desc limit 1'));
+    assert.equal(req.body.room_id,room);const first=req.headers['x-job-token'];
+    assert.equal((await scalar('select app_private.dispatch_game_results() as n')).n,0);
+    await db.query("update app_private.game_result_jobs set next_attempt_at=now()-interval '1 second' where room_id=$1",[room]);
+    await db.exec('set role service_role');
+    await assert.rejects(()=>db.query('select public.prepare_queued_game_result($1,$2)',[room,first]),/JOB_UNAVAILABLE/);
+    await db.exec('reset role');
+    assert.equal((await scalar('select app_private.dispatch_game_results() as n')).n,1);
+    const second=(await scalar('select delivery_token from app_private.game_result_jobs where room_id=$1',[room])).delivery_token;
+    assert.notEqual(first,second);
+    await db.exec('set role service_role');
+    await assert.rejects(()=>db.query('select public.prepare_queued_game_result($1,$2)',[room,first]),/JOB_UNAVAILABLE/);
+    await db.exec('reset role');
+    await db.query("update auth.users set banned_until=now()+interval '1 hour' where id=$1",[ids.t]);
+    await db.exec('set role service_role');
+    await assert.rejects(()=>db.query('select public.finalize_queued_game_result($1,$2,1,0,0,0)',[room,second]),/ROOM_UNAVAILABLE/);
+    await db.exec('reset role');await db.query('update auth.users set banned_until=null where id=$1',[ids.t]);
+    await db.exec('set role service_role');await db.query('select public.fail_queued_game_result($1,$2)',[room,second]);
+    await db.exec('reset role');
+    assert.equal((await scalar('select status from public.game_rooms where id=$1',[room])).status,'expired');
+    assert.equal((await scalar('select count(*)::int as n from app_private.game_results where room_id=$1',[room])).n,0);
+    const raced=await makeRoom();
+    const racedJob=(await db.query('select * from app_private.claim_game_result_dispatches()')).rows.find(j=>j.room_id===raced);
+    await db.exec('set role service_role');
+    await db.query('select public.prepare_queued_game_result($1,$2)',[raced,racedJob.delivery_token]);
+    await db.query('select public.finalize_game_result($1,$2,0,0,0,0)',[raced,ids.q]);
+    await assert.rejects(()=>db.query('select public.finalize_queued_game_result($1,$2,1,0,0,0)',[raced,racedJob.delivery_token]),/JOB_UNAVAILABLE/);
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.game_results where room_id=$1',[raced])).n,1);
+    const overdue=await makeRoom();
+    await db.query("update app_private.game_result_jobs set deadline=now()-interval '1 second' where room_id=$1",[overdue]);
+    assert.equal((await scalar('select app_private.dispatch_game_results() as n')).n,0);
+    assert.equal((await scalar('select last_error from app_private.game_result_jobs where room_id=$1',[overdue])).last_error,'deadline_exceeded');
+    assert.equal((await scalar('select status from public.game_rooms where id=$1',[overdue])).status,'expired');
+    const removed=await makeRoom();
+    const delivery=(await db.query('select * from app_private.claim_game_result_dispatches()')).rows.find(j=>j.room_id===removed);
+    await asUser('q');await db.query('select public.block_profile($1)',[ids.t]);
+    await db.exec('reset role;set role service_role');
+    await assert.rejects(()=>db.query('select public.prepare_queued_game_result($1,$2)',[removed,delivery.delivery_token]),/JOB_UNAVAILABLE/);
+    await db.exec('reset role');
+    assert.equal((await scalar('select count(*)::int as n from app_private.game_result_jobs where room_id=$1',[removed])).n,0);
+    await db.query('delete from app_private.game_result_worker_config');
+    await db.query('delete from auth.users where id in ($1,$2)',[ids.q,ids.t]);delete ids.q;delete ids.t;
   });
   await check('deleted user cannot use a stale user id', async () => {
     await db.exec('reset role'); await db.query('delete from auth.users where id=$1',[ids.c]);
